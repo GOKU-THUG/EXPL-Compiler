@@ -1,0 +1,248 @@
+// breakpoint;
+alias function_num R1;
+
+
+if(function_num==ACQUIRE_TERMINAL)						//Acquire Terminal
+then
+
+    alias pid R2;
+	
+    while([TERMINAL_STATUS_TABLE]==1)
+	do
+		[PROCESS_TABLE + (pid*16) + 4]=WAIT_TERMINAL;
+
+		multipush(R1,R2);
+		call MOD_5;
+
+		multipop(R1,R2);
+	endwhile;
+
+	[TERMINAL_STATUS_TABLE]=1;
+	[TERMINAL_STATUS_TABLE+1]=pid;
+
+	// breakpoint;
+	return;
+endif;
+
+
+
+if(function_num==RELEASE_TERMINAL)				//Release Terminal
+then
+    alias pid R2;
+	
+    if(pid==[TERMINAL_STATUS_TABLE+1])		//if the current pid is not equal to the one in the terminal status table then it means the current pid is releasing the terminal without acquiring it.
+	then
+		[TERMINAL_STATUS_TABLE]=0;
+
+		alias pids R5;
+		pids=0;
+		while(pids<16)
+		do
+			if([PROCESS_TABLE + (pids*16) + 4]==WAIT_TERMINAL)
+			then
+				[PROCESS_TABLE + (pids*16) + 4]=READY;
+			endif;
+			
+			pids=pids+1;
+		endwhile;
+
+
+		R0=0;
+
+		// breakpoint;
+		return;
+	
+	else
+		R0=-1;
+		return;
+	endif;
+endif;
+
+if(function_num==ACQUIRE_DISK)
+then
+    alias pid R2;
+	// breakpoint;
+	while([DISK_STATUS_TABLE]==1)
+	do
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=WAIT_DISK;
+		
+		multipush(R1,R2);
+		call MOD_5;			//SCHEDULER MODULE
+		multipop(R1,R2);
+	endwhile;
+	
+	[DISK_STATUS_TABLE]=1;						//Setting the status of  disk status table to 1 
+	[DISK_STATUS_TABLE+4]=pid;					//Setting the pid of disk status table to pid;
+	return;
+endif;
+
+if(function_num==ACQUIRE_SEMAPHORE)
+then
+    alias pid R2;
+	alias i R5;
+	i=0;
+	
+	while(i<MAX_SEM_COUNT)						//Finding a free entry in the semaphore table.
+	do	
+		if([SEMAPHORE_TABLE+4*i+1]==0)				//PROCESS COUNT=0;
+		then
+			break;
+		endif;	
+		
+		i=i+1;
+	endwhile;
+	
+	if(i==MAX_SEM_COUNT)
+	then
+		R0=-1;
+	else
+		[SEMAPHORE_TABLE+4*i]=-1;				//LOCKING_PID
+		[SEMAPHORE_TABLE+4*i+1]=1;				//PROCESS_COUNT
+		
+		R0=i;							//RETURNS THE SEM_INDEX
+	endif;
+	
+	return;
+endif;
+
+if(function_num==RELEASE_SEMAPHORE)
+then
+    alias pid R2;
+	alias semid R3;
+	
+	if([SEMAPHORE_TABLE+4*semid]==pid)					//Locked Process
+	then
+	    [SEMAPHORE_TABLE+4*semid]=-1;					//UNLOCK
+	
+	alias i R5;
+	i=0;
+	
+	while(i<16)
+	do
+		if(([PROCESS_TABLE + i*16 + 4]==WAIT_SEMAPHORE) && ([PROCESS_TABLE + i*16 + 5]==semid))
+		then
+			[PROCESS_TABLE + i*16 + 4]=READY;
+		endif;
+
+		i=i+1;
+	endwhile; 
+	
+		[SEMAPHORE_TABLE+4*semid + 1]=[SEMAPHORE_TABLE+4*semid + 1]-1;		//Decrementing the process count
+	endif;
+	
+	R0=0;
+	return;
+endif;
+
+if(function_num==ACQUIRE_INODE)
+then
+    alias pid R2;
+	alias inode_index R3;
+	
+	while([FILE_STATUS_TABLE + inode_index*4]!=-1)
+	do
+	 	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 4]=WAIT_FILE; 		//State
+	 	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 5]=inode_index;		//Entry of the file in the inode table
+	 	
+	 	multipush(R1,R2,R3);
+		call MOD_5;								//Scheduler Module
+		multipop(R1,R2,R3);
+	 	
+	endwhile;
+
+	if([INODE_TABLE + inode_index*16 + 1]==-1)				//ie:THe file has been deleted.
+	then
+		R0=-1;
+		return;
+	endif;
+	
+	[FILE_STATUS_TABLE + inode_index*4]=[SYSTEM_STATUS_TABLE+1];			//The locking pid=current process pid
+	
+	R0=0;
+	return;
+endif;
+
+if(function_num==RELEASE_INODE)
+then
+    alias pid R2;
+	alias inode_index R3;
+	alias i R5;
+	i=0;
+	
+	if([FILE_STATUS_TABLE + inode_index*4]!=[SYSTEM_STATUS_TABLE+1])
+	then
+		R0=-1;
+		return;
+	endif;
+	
+	[FILE_STATUS_TABLE + inode_index*4]=-1;
+	
+	
+	while(i<16)
+	do
+		if([PROCESS_TABLE + i*16 + 4]==WAIT_FILE && [PROCESS_TABLE + i*16 + 5]==inode_index)
+		then
+			[PROCESS_TABLE + i*16 + 4]=READY;
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	R0=0;
+	return;
+	
+endif;
+
+if(function_num==ACQUIRE_BUFFER)
+then
+    alias pid R2;
+	alias buffer_num R3;
+	
+	while([BUFFER_TABLE + 4*buffer_num + 2]!=-1)			//If it is locked by some other process
+	do
+	 	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 4]=WAIT_BUFFER; 		//State
+	 	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 5]=buffer_num;		//Entry of the file in the inode table
+	 	
+	 	multipush(R1,R2,R3);
+		call MOD_5;								//Scheduler Module
+		multipop(R1,R2,R3);
+	 	
+	endwhile;
+	
+	[BUFFER_TABLE + 4*buffer_num + 2]=[SYSTEM_STATUS_TABLE + 1];
+	
+	R0=0;
+	return;
+endif;
+
+if(function_num==RELEASE_BUFFER)
+then
+    alias pid R2;
+	alias buffer_num R3;
+	alias i R5;
+	
+	if([BUFFER_TABLE + 4*buffer_num + 2]!=[SYSTEM_STATUS_TABLE+1])			//If locking pid!=current pid
+	then
+		R0=-1;
+		return; 
+	endif;
+	
+	[BUFFER_TABLE + 4*buffer_num + 2]=-1;
+	
+	i=0;
+	
+	while(i<16)
+	do
+		if(([PROCESS_TABLE + i*16 + 4]==WAIT_BUFFER) && ([PROCESS_TABLE + i*16 + 5]==buffer_num))
+		then
+			[PROCESS_TABLE + i*16 + 4]=READY;
+		endif;
+
+		i=i+1;
+	endwhile; 
+	
+	R0=0;
+	return;
+	
+endif;
+

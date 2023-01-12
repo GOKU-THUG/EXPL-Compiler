@@ -1,0 +1,85 @@
+breakpoint;
+alias current_pid R0;
+alias next_pid R1;
+alias i R2;
+current_pid=[SYSTEM_STATUS_TABLE+1];
+
+multipush (BP);							//There is no push in spl only multipush.
+
+[PROCESS_TABLE + (current_pid*16) + 12] = SP % 512;			//KPTR
+[PROCESS_TABLE + (current_pid*16) + 14] = PTBR;				//PTBR
+[PROCESS_TABLE + (current_pid*16) + 15] = PTLR;				//PTLR
+
+if([SYSTEM_STATUS_TABLE+5]!=0)          //PAGING STATUS:IS IN SWAPPED IN OR SWAPPED OUT STATE
+then
+    if([PROCESS_TABLE + 16*SWAPPER_DAEMON + 4]==WAIT_DISK)
+    then
+        next_pid=IDLE_PROCESS;
+    else
+        next_pid=SWAPPER_DAEMON;
+    endif;
+else
+    next_pid=-1;
+    i=(current_pid+1);
+    
+    while(i<MAX_PROC_NUM-1)
+    do
+        if(([PROCESS_TABLE+ (i*16) + 6]==0) && ([PROCESS_TABLE + (i*16) + 4] == READY || [PROCESS_TABLE + (i*16) + 4] == CREATED))
+        then
+            next_pid=i;
+            break;
+        endif;
+
+        i=i+1;
+    endwhile;
+
+    if(next_pid==-1)
+    then
+        i=1;
+
+        while(i<[SYSTEM_STATUS_TABLE+1])
+        do
+            if(([PROCESS_TABLE+ (i*16) + 6]==0) && ([PROCESS_TABLE + (i*16) + 4] == READY || [PROCESS_TABLE + (i*16) + 4] == CREATED))
+            then
+                next_pid=i;
+                break;
+            endif;
+
+                i=i+1;
+        endwhile;
+    endif;
+
+    if(next_pid==-1)
+    then
+        next_pid=0;         //SCHEDULE IDLE PROCESS IF NO OTHER PROCESS IS SCHEDULED;
+    endif;
+endif;
+
+
+[SYSTEM_STATUS_TABLE+1]=next_pid;
+
+PTBR=[PROCESS_TABLE + (next_pid*16) + 14];
+PTLR=[PROCESS_TABLE + (next_pid*16) + 15];
+
+if([PROCESS_TABLE + (next_pid*16) + 4] == CREATED)
+then
+
+	[PROCESS_TABLE + (next_pid*16) + 4] = RUNNING;
+
+	SP=[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 13];  //SP=UPTR;
+
+	BP=[[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 11]*512];	//BP=value at top of the kernel stack so as to restore in timer interrupt
+
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 9]=0; 								        //Setting the mode flag to 0
+	//breakpoint;
+	ireturn;
+endif;
+
+
+SP=([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 11]*512) + [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 12];	//SP=kernel stack so as to restore in timer interrupt
+[PROCESS_TABLE + (next_pid*16) + 4] = RUNNING;
+
+multipop (BP);
+
+breakpoint;
+return;

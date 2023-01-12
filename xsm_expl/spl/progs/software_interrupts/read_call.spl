@@ -1,0 +1,167 @@
+alias userSP R0;
+alias descriptor_phys_pg_no R1;
+alias descriptor_phy_address R2;
+alias file_desc R3;
+alias return_addr R5;
+alias read_addr R6;
+alias open_entry R7;
+alias inode_index R8;
+alias lseek_addr R9;
+alias temp1 R12;
+alias temp2 R13;
+
+
+temp2=PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16;
+
+[temp2 + 9]=7;												//MODE BIT=7
+userSP=SP;
+
+[temp2 + 13]=SP;											//UPTR=SP
+
+SP=([temp2 + 11]*512) - 1;										//Switching to kernel stack
+
+descriptor_phys_pg_no=[PTBR+2*((userSP-4)/512)];				
+descriptor_phy_address=(descriptor_phys_pg_no*512) + ((userSP-4)%512);
+file_desc=[descriptor_phy_address];									//File descriptor
+
+read_addr=[[PTBR+2*((userSP-3)/512)]*512 + ((userSP-3)%512)];
+
+return_addr=([PTBR+2*((userSP-1)/512)]*512)+((userSP-1)%512);
+
+
+if(file_desc!=-1)											//File Read
+then	
+ 	if(file_desc<0 || file_desc>7)
+ 	then
+ 		[return_addr]=-1;	
+ 		[temp2 + 9]=0;										//Setting the mode bit back to 0;
+		SP=[temp2 + 13];									//Setting sp back to user stack;
+		ireturn;					
+ 	endif;
+
+	temp1=[temp2 + 11]*512 + (2*file_desc + 496);
+	
+	if([temp1]!=0)
+	then
+		[return_addr]=-1;	
+ 		[temp2 + 9]=0;										//Setting the mode bit back to 0;
+		SP=[temp2 + 13];									//Setting sp back to user stack;
+		ireturn;
+	endif;		
+	
+	open_entry=[temp1 + 1];
+	inode_index=[OPEN_FILE_TABLE + 4*open_entry];	
+	
+	//Locking the inode table
+	multipush(R0,R1,R2,R3,R5,R6,R7,R8,R12,R13);				//To lock the inode so that no other process now uses this file and the file can be deleted safely.
+		R1=ACQUIRE_INODE;
+		R2=[SYSTEM_STATUS_TABLE+1];
+		R3=inode_index;
+		call MOD_0;	
+		
+		R10=R0;						//Resource Manager
+	multipop(R0,R1,R2,R3,R5,R6,R7,R8,R12,R13);	
+	
+	if(R10==-1)					//There is no such file:
+	then	
+		[return_addr]=-1;	
+		[temp2 + 9]=0;										//Setting the mode bit back to 0;
+		SP=[temp2 + 13];									//Setting sp back to user stack;
+
+		ireturn;
+	endif;
+
+	lseek_addr=OPEN_FILE_TABLE + 4*open_entry + 2;								//LSEEK ADDRESS
+	
+	read_addr=[PTBR+2*(read_addr/512)]*512 + (read_addr%512);						//Physical read address
+	
+	temp1=INODE_TABLE + inode_index*16;
+	
+	
+	if(inode_index==INODE_ROOT)
+	then
+		if([lseek_addr]>=480)
+		then
+			multipush(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);						//To unlock the inode as that file is already opened by another process and cannot be deleted.
+				R1=RELEASE_INODE;								//Release Inode
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R3=inode_index;
+				call MOD_0;									//Resource Manager
+			 multipop(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);
+				
+				[return_addr]=-2;	
+ 				[temp2 + 9]=0;									//Setting the mode bit back to 0;
+				SP=[temp2 + 13];								//Setting sp back to user stack;
+				ireturn;
+		endif;
+		
+		[read_addr]=[ROOT_FILE + [lseek_addr]];
+		[lseek_addr]=[lseek_addr]+1;
+			
+	else
+		if([lseek_addr]>=[temp1+2])									//If lseek is equal to the file size
+		then
+			multipush(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);						//To unlock the inode as that file is already opened by another process and cannot be deleted.
+				R1=RELEASE_INODE;								//Release Inode
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R3=inode_index;
+				call MOD_0;									//Resource Manager
+			
+			multipop(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);
+			
+				[return_addr]=-2;	
+ 				[temp2 + 9]=0;									//Setting the mode bit back to 0;
+				SP=[temp2 + 13];								//Setting sp back to user stack;
+				ireturn;
+			
+		endif;
+		
+		//BUFFERED READ
+		multipush(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);	
+			
+			R1=BUFFERED_READ;
+			R2=[SYSTEM_STATUS_TABLE + 1];	
+			R3=[temp1 + 8 + ([lseek_addr]/512)];
+			R4=[lseek_addr]%512;
+			R5=read_addr;
+			
+			call MOD_3;										//FILE MANAGER
+		multipop(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);		
+		
+		[lseek_addr]=[lseek_addr]+1;
+	endif;
+	
+	
+	//RELEASE INODE
+	multipush(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);						//To unlock the inode as that file is already opened by another process and cannot be deleted.
+		R1=RELEASE_INODE;								//Release Inode
+		R2=[SYSTEM_STATUS_TABLE+1];
+		R3=inode_index;
+		call MOD_0;									//Resource Manager
+	multipop(R0,R1,R2,R3,R5,R7,R8,R9,R12,R13);
+		
+	[return_addr]=0;	
+	
+else													//Terminal Read
+		
+	multipush(R0,R1,R2,R3,R5,R6,R12,R13);	
+
+	R1=TERMINAL_READ;										//Function for terminal read.
+	R2=[SYSTEM_STATUS_TABLE+1];									//Current Pid.
+	R3=read_addr;											//Place where the value read has to be stored to.
+
+	call MOD_4;											//Device Manager
+	multipop(R0,R1,R2,R3,R5,R6,R12,R13);
+
+	[return_addr]=0;										//0 indicates success which is the return address.
+
+endif;
+
+
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;							//Setting the mode bit back to 0;
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];							//Setting sp back to user stack;
+ireturn;
+
+
+

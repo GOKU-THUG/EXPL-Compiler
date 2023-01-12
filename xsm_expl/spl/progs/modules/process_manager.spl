@@ -1,0 +1,252 @@
+// breakpoint;
+alias function_num R1;
+alias pid R2;
+
+if(function_num==1)							//GET_PCB_ENTRY
+then
+	alias i R5;
+	i=0;
+	
+	while(i<16)
+	do
+		if([PROCESS_TABLE + i*16 + 4]==TERMINATED)
+		then
+			
+			[PROCESS_TABLE + i*16 + 1]=i;
+			[PROCESS_TABLE + i*16 + 4]=ALLOCATED;
+			[PROCESS_TABLE + i*16 + 14]=PAGE_TABLE_BASE+20*i;
+			[PROCESS_TABLE + i*16 + 15]=10;
+			
+			R0=i;
+			break;
+		endif;
+		i=i+1;
+	endwhile;
+	
+	
+	if(i==16)
+	then
+		R0=-1;							//As no process is free it will return -1;
+	endif;
+	
+	return;
+endif;
+
+if(function_num==KILL_ALL)						//KILL ALL PROCESS
+then
+	alias i R3;
+	i=0;
+	
+	while(i<MAX_FILE_NUM)
+	do
+		if([INODE_TABLE + i*16 + 1]!=-1)			//File Name
+		then
+			multipush(R1,R2,R3);
+				R1=ACQUIRE_INODE;
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R3=i;
+				call MOD_0;					//Resource Manager
+			multipop(R1,R2,R3);
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+    i=2;
+    
+    while(i<MAX_PROC_NUM-1) //SWAPPER DAEMON IS NOT TERMINATED
+    do
+    	if(i!=[SYSTEM_STATUS_TABLE+1] && [PROCESS_TABLE + i*16 + 4]!=TERMINATED)
+    	then
+    		multipush(R1,R2,R3);			
+    			R1=EXIT_PROCESS;				//EXIT FUNCTION
+    			R2=i;
+    			call MOD_1;
+    		multipop(R1,R2,R3);
+    	endif;
+    	  	
+    	i=i+1;
+    endwhile;
+    
+    i=0;
+	
+	while(i<MAX_FILE_NUM)
+	do
+		if([INODE_TABLE + i*16 + 1]!=-1)			//File Name
+		then
+			multipush(R1,R2,R3);
+				R1=RELEASE_INODE;
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R3=i;
+				call MOD_0;					//Resource Manager
+			multipop(R1,R2,R3);
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+    R0=0;
+    return;
+    
+endif;
+
+if(function_num==2)                  //Free User AREA Page
+then
+
+	alias offset R15;
+	alias base_addr R14;
+		
+	base_addr=[PROCESS_TABLE + pid*16 + 11]*512;
+	offset=496;
+	
+	while(offset<=511)
+	do
+		if([base_addr+offset]==1)						//Semaphores
+		then
+			multipush(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+				R1=RELEASE_SEMAPHORE;					//RELEASE SEMAPHORE
+				R2=pid;
+				R3=[base_addr+offset+1];				//SEMID
+				
+				call MOD_0;						//RESOURCE MANAGER
+			multipop(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+		endif;
+		
+		if([base_addr+offset]==0)						//Files
+		then
+			multipush(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+				R1=CLOSE;
+				R2=pid;
+				R3=[base_addr+offset+1];
+			
+				call MOD_3;						//File Manager Module
+			multipop(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+		endif;
+		
+		[base_addr+offset]=-1;
+		offset=offset+2;
+	endwhile;
+	
+	multipush(R1,R2,R3);
+		R1=2;                       		//Calling release page function
+		R2=[PROCESS_TABLE + pid*16 + 11];	//As pid is not needed in release page function.
+		call MOD_2;                 		//Memory manager module
+	multipop(R1,R2,R3);
+		
+	return;
+endif;
+
+
+
+
+if (function_num==3)                //Exit Function
+then
+	// breakpoint;
+	
+	if([PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]!=9)			//Either the same process can call exit function to itself inside exec or int 10 or a different process can call on it.
+	then
+		alias i R3;
+		i=0;
+		
+		while(i<16)
+		do
+			if([PROCESS_TABLE + i*16 + 4]==WAIT_PROCESS && [PROCESS_TABLE + i*16 + 5]==pid)			//Eg:In case of semaphores
+			then
+			     [PROCESS_TABLE + i*16 + 4]=READY;
+			endif;
+		
+			if([PROCESS_TABLE + i*16 + 2]==pid)
+			then
+				[PROCESS_TABLE + i*16 + 2]=-1;
+			endif;
+			
+			i=i+1;
+		endwhile;
+	endif;
+	
+	multipush(R1,R2,R3);
+		R1=4;                       //Calling free page table function
+		R2=pid;
+		call MOD_1;                 //Process Manager module
+	// breakpoint;	
+    multipop(R1,R2,R3);
+    multipush(R1,R2,R3);
+		R1=2;                       //Calling free user area page function
+		R2=pid;
+		call MOD_1;                 //Process Manager module
+
+	multipop(R1,R2,R3);
+
+	[PROCESS_TABLE + (pid*16) + 4]=TERMINATED;		//Setting the state of the process to terminated.
+
+	return;
+endif;
+
+
+
+
+
+
+if(function_num==4)					//Free Page TABLE
+then
+	
+	multipush(R1,R2,R3);
+	
+		alias i R4;
+		alias ptbr R5;		
+		
+		ptbr= [PROCESS_TABLE + (pid*16) + 14];
+		
+	       //Invalidating the library pages separately as we do not call release page function on the library.
+	       [ptbr+0]=-1;
+	       [ptbr+1]="0000";
+
+	       [ptbr+2]=-1;
+	       [ptbr+3]="0000";
+			
+		i=4;
+		
+		while(i<20)
+		do
+			if([ptbr+i]!=-1)
+			then
+			
+				multipush(R1,R2,R3,R4,R5);
+					R1=RELEASE_PAGE;				//RELEASE PAGE FUNCTION
+					R2=[ptbr+i];
+					call MOD_2;			//MEMORY MANAGER MODULE
+				multipop(R1,R2,R3,R4,R5);
+				
+				[ptbr+i]=-1;	
+				[ptbr+(i+1)]="0000";	
+			endif;
+					
+			i=i+2;
+		endwhile;
+		
+		i=0;
+		
+		//RELEASING DISK BLOCKS OF HEAP AND STACK BY VERIFYING THE DISK_STATUS_TABLE
+		while(i<10)
+		do
+			if((i==2 || i==3 || i==8 || i==9) && ([DISK_MAP_TABLE + pid*10 + i]!=-1))		//If heap or stack entries of that process are there in the disk,then we need to release them.
+			then
+				multipush(R1,R2,R3,R4,R5);
+					R1=RELEASE_BLOCK;							//Release block
+					R2=[DISK_MAP_TABLE + pid*10 + i];					//Block to release
+					call MOD_2;								//Memory Manager
+				multipop(R1,R2,R3,R4,R5);
+			endif;
+			
+			[DISK_MAP_TABLE + pid*10 + i]=-1;
+			
+			i=i+1;
+		endwhile;
+		
+	multipop(R1,R2,R3);
+
+	return;
+endif;
+
+
+

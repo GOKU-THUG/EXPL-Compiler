@@ -1,0 +1,15 @@
+alias userSP R3;
+alias address R4;
+alias data R5;
+
+userSP = SP;
+
+address = [[PTBR +  ( (userSP-3)/ 512 ) * 2] * 512 + ((userSP-3) % 512)];
+
+address=[PTBR + (address/512)*2]*512 + (address%512);
+
+[address]=P0;
+
+[[PTBR +  ( (userSP-1)/ 512 ) * 2] * 512 + ((userSP-1) % 512)]=0;
+
+ireturn;

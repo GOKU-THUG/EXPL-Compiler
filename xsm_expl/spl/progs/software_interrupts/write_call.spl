@@ -1,0 +1,184 @@
+alias USERSP R0;
+alias descriptor_phys_pg_no R1;
+alias descriptor_phy_address R2;
+alias file_desc R3;
+alias return_addr R5;
+alias write_val R6;
+alias open_entry R7;
+alias inode_index R8;
+alias lseek_addr R9;
+alias disk_block R10;
+alias temp1 R12;
+alias currentpcb R13;
+
+currentpcb=PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16;
+
+[currentpcb + 13]=SP;
+USERSP=SP;
+
+[currentpcb + 9]=5; 			//SETTING THE MODE FLAG BIT TO THE SYSTEM CALL NUMBER
+
+SP=[currentpcb + 11]*512 - 1;			//Switching to kernel stack
+
+descriptor_phys_pg_no=[PTBR+2*((USERSP-4)/512)]; 			//Physical page no corresponding to argument 1
+descriptor_phy_address=(descriptor_phys_pg_no*512)+((USERSP-4)%512);
+file_desc=[descriptor_phy_address];
+
+write_val=[ ([PTBR+2*((USERSP-3)/512)]*512) + ((USERSP-3)%512) ];
+return_addr=([PTBR+2*((USERSP-1)/512)]*512) + ((USERSP-1)%512);
+
+
+if(file_desc!=-2) 											//Writing to a file.
+then 													//Non valid file descriptor case:
+	
+	if(file_desc<0 || file_desc>7)
+ 	then
+ 		[return_addr]=-1;	
+ 		[currentpcb + 9]=0;										//Setting the mode bit back to 0;
+		SP=[currentpcb + 13];									//Setting sp back to user stack;
+		ireturn;					
+ 	endif;
+
+	temp1=[currentpcb + 11]*512 + (2*file_desc + 496);
+	
+	if([temp1]!=0)											//If not a file
+	then
+		[return_addr]=-1;	
+ 		[currentpcb + 9]=0;										//Setting the mode bit back to 0;
+		SP=[currentpcb + 13];									//Setting sp back to user stack;
+		ireturn;
+	endif;	
+	
+	open_entry=[temp1 + 1];
+	inode_index=[OPEN_FILE_TABLE + 4*open_entry];	
+	
+	//Checking the file permission to chek if it is writable or not;
+		
+		temp1=INODE_TABLE + inode_index*16;
+				
+		if([temp1 + 4]==0)									//If it has exclusive permission(ie:Not open to all)
+		then
+			if([currentpcb + 3]!=1 && [temp1+3]!=[currentpcb+3])	    				//If the user is not root or the current userid is not same as the owner of the file.
+			then
+				[return_addr]=-3;				
+				[currentpcb + 9]=0;
+				SP=[currentpcb + 13];
+				ireturn;
+			endif;	
+		endif;
+		
+		
+	multipush(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);							//To lock the inode so that no other process now uses this file and the file can be deleted safely.
+		R1=ACQUIRE_INODE;
+		R2=[SYSTEM_STATUS_TABLE+1];
+		R3=inode_index;
+		call MOD_0;	
+		
+		R10=R0;											//Resource Manager
+	multipop(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);
+	
+	if(R10==-1)											//There is no such file:
+	then	
+		[return_addr]=-1;	
+		[currentpcb + 9]=0;										//Setting the mode bit back to 0;
+		SP=[currentpcb + 13];									//Setting sp back to user stack;
+		ireturn;
+	endif;
+
+	lseek_addr=OPEN_FILE_TABLE + 4*open_entry + 2;
+
+	if([lseek_addr]==MAX_FILE_SIZE)
+	then
+		multipush(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);						//To unlock the inode as that file is already opened by another process and cannot be deleted.
+			R1=RELEASE_INODE;								//Release Inode
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R3=inode_index;
+			call MOD_0;									//Resource Manager
+		multipop(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);
+		
+		[return_addr]=-2;
+		[currentpcb + 9]=0;
+		SP=[currentpcb + 13];
+		ireturn;
+	endif;
+	
+	if([lseek_addr]==[temp1+2] && [lseek_addr]%512==0)
+	then
+		multipush(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);
+			R1=GET_FREE_BLOCK;								//GET FREE BLOCK
+			R2=[SYSTEM_STATUS_TABLE + 1];
+			call MOD_2;									//Memory Manager
+		
+			disk_block=R0;
+			
+			if(disk_block==-1)
+			then
+				multipush(R5,R12,R13);							//To unlock the inode as that file is already opened by another process and cannot be deleted.
+					R1=RELEASE_INODE;						//Release Inode
+					R2=[SYSTEM_STATUS_TABLE+1];
+					R3=inode_index;
+					call MOD_0;							//Resource Manager
+				multipop(R5,R12,R13);
+				
+				[return_addr]=-2;
+				[currentpcb + 9]=0;
+				SP=[currentpcb + 13];
+				ireturn;
+				
+			else
+				[temp1 + 8 + [lseek_addr]/512]=disk_block;				//Storing the newly allocated disk block in the inode table
+			endif;
+		multipop(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);										
+	endif;
+	
+	
+	disk_block=[temp1 + 8 + [lseek_addr]/512];
+	
+	//BUFFERED Write
+	multipush(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);	
+		
+		R1=BUFFERED_WRITE;
+		R2=[SYSTEM_STATUS_TABLE + 1];	
+		R3=disk_block;
+		R4=[lseek_addr]%512;
+		R5=write_val;
+		
+		call MOD_3;										//FILE MANAGER
+	multipop(R0,R1,R2,R3,R5,R6,R7,R8,R9,R12,R13);
+	
+	if([lseek_addr]==[temp1+2])									//Increasing the file size if lseek is equal to the file size
+	then
+		[temp1+2]=[temp1+2]+1;
+		[ROOT_FILE + 8*inode_index + 1]=[ROOT_FILE + 8*inode_index + 1]+1;
+	endif;
+	
+	[lseek_addr]=[lseek_addr]+1;
+	
+	R1=RELEASE_INODE;						//Release Inode
+	R2=[SYSTEM_STATUS_TABLE+1];
+	R3=inode_index;
+	call MOD_0;
+	/////////////////////////////////////////////////////////////////////
+	[return_addr]=0;
+else		
+	multipush(R0,R1,R2,R3,R5,R6,R12,R13);								//PUSHING THE REGISTER VALUES BEFORE CALLING DEVICE MANAGER
+		R1=TERMINAL_WRITE;									//TERMINAL WRITE FUNCTION NUMBER
+		R2=[SYSTEM_STATUS_TABLE+1];								//CURRENT PID
+		R3=write_val;										//VALUE TO WRITE
+		call MOD_4;										//CALLING DEVICE MANAGER
+	multipop(R0,R1,R2,R3,R5,R6,R12,R13);
+
+	[return_addr]=0; 										//0:indicates success:return the value;
+endif;
+
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]; 								//Pointing back to the user stack
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//SETTING THE MODE FLAG BIT BACK TO 0
+ireturn;
+
+
+
+
+
+
+

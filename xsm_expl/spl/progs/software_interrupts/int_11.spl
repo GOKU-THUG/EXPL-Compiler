@@ -1,0 +1,88 @@
+//breakpoint;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;			//UPTR=SP
+alias userSP R2;
+alias sys_call_no R3;
+userSP = SP;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512 - 1;		//SP=USERAREA PAGE
+
+sys_call_no=[[PTBR+2*((userSP-5)/512)]*512 + (userSP-5)%512];		//sys_call_no
+
+alias return_address R6;
+	
+return_address=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+
+
+if(sys_call_no==11)							//Getpid
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=11;			//Setting the mode bit
+	[return_address]=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 1]; 	//PID	
+endif;
+
+
+if(sys_call_no==12)							//Getppid
+then
+        [PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=12;			//Setting the mode bit
+	[return_address]=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 2];	//PPID
+endif;
+
+
+
+
+
+if(sys_call_no==13)							//Wait
+then
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=13;			//Setting the mode bit
+
+		alias signal_pid R4;
+		alias signalpidstatus R5;
+		
+		signal_pid=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];		//setting the signal pid;
+		signalpidstatus=[PROCESS_TABLE + signal_pid*16 + 4];
+		
+		if((signal_pid>=0 && signal_pid<16)  && signal_pid!=[SYSTEM_STATUS_TABLE+1]  && signalpidstatus!=TERMINATED)
+		then
+			[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=WAIT_PROCESS;
+			[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 5]=signal_pid;
+			
+			multipush(R1,R2,R3,R4,R5,R6);
+			call MOD_5;							//Calling scheduler process
+			multipop(R1,R2,R3,R4,R5,R6);
+			
+			[return_address]=0;
+		else
+			[return_address]=-1;	
+		endif;
+endif;
+
+
+
+
+if(sys_call_no==14)							//Signal
+then
+
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=14;
+
+	alias i R7;
+	i=0;
+
+	while(i<16)
+	do
+		if([PROCESS_TABLE + i*16 + 4]==WAIT_PROCESS && [PROCESS_TABLE + i*16 + 5]==[SYSTEM_STATUS_TABLE+1])
+		then
+		     [PROCESS_TABLE + i*16 + 4]=READY;
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	[return_address]=0;
+
+endif;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//MODE FLAG BIT=0;
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];			//SP=UPTR
+
+ireturn;

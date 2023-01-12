@@ -1,0 +1,231 @@
+alias function_num R1;
+alias pid R2;
+alias i R3;
+alias swap_proc R4;
+alias tick R5;
+alias ptbr R6;      //AS PTBR OF SWAP PROCESS IS NEEDED AND NOT OF SWAPPER DAEMON:VIP
+alias swapdiskmap R7;
+alias pcb R10;          //STORES PCB OF EACH PROCESS INSIDE THE WHILE LOOP FOR EACH PROCESS
+
+if(function_num==SWAP_OUT)
+then
+    i=SHELL_PROCESS+1;
+    swap_proc=-1;
+
+    //NON_SWAPPED WAIT_PROCESS PROCESSES
+    while(i<MAX_PROC_NUM-1)
+    do
+        pcb=PROCESS_TABLE + i*16;
+
+        if([pcb + 6]==0 && [pcb + 4]==WAIT_PROCESS)   //NON SWAPPED PROCESS
+        then
+            swap_proc=i;
+            break;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    //NON_SWAPPED WAIT_SEMAPHORE PROCESSES:(NON_SWAPPED WAIT_PROCESS UNAVAILABLE)
+    if(swap_proc==-1)
+    then
+        i=SHELL_PROCESS+1;
+
+        while(i<MAX_PROC_NUM-1)
+        do
+            pcb=PROCESS_TABLE + i*16;
+
+            if([pcb + 6]==0 && [pcb + 4]==WAIT_SEMAPHORE)   //NON SWAPPED PROCESS
+            then
+                swap_proc=i;
+                break;
+            endif;
+            
+            i=i+1;
+        endwhile;        
+    endif;
+
+
+    //NON SWAPPED PROCESS WITH HIGHEST TICK AND STATE IS NOT RUNNING OR TERMINATED OR ALLOCATED OR SWAPPED
+    if(swap_proc==-1)
+    then
+        i=SHELL_PROCESS+1;
+        tick=-1;
+
+        while(i<MAX_PROC_NUM-1)
+        do
+            pcb=PROCESS_TABLE + i*16;
+
+            if([pcb + 6]==0 && [pcb + 0]>tick && [pcb + 4]!=RUNNING && [pcb + 4]!=TERMINATED && [pcb + 4]!=ALLOCATED)
+            then
+                tick=[pcb + 0];
+                swap_proc=i;
+            endif;
+            
+            i=i+1;
+        endwhile;
+    endif;
+
+    if(swap_proc==-1)
+    then
+        [SYSTEM_STATUS_TABLE+5]=0;              //SETTING THE PAGING STATUS BACK TO 0
+        return;
+    endif;
+/////////////////////////////////////////////////////////////////////////////////////////
+//Swap Process found:NOTE:DO NOT USER PTBR instead user ptbr;
+
+    ptbr=[PROCESS_TABLE+swap_proc*16 + 14];
+    [PROCESS_TABLE + swap_proc*16 + 0]=0;       //SETTING THE TICK OF SWAP PROCESS TO 0
+
+    /////////////////////////////////////////////////////////////////////
+    //INVALIDATING THE VALID PAGES OF THE SWAP PROCESS
+    //use ptbr not PTBR:VIP
+
+    i=4;            //Start of heap page;
+    
+    while(i<20)
+    do
+        if([ptbr+i]!=-1)
+        then
+            //INVALIDATING THE NONSHARED VALID HEAP PAGES and VALID STACK PAGES;
+            if((i>=4 && i<=6) ||(i>=16 && i<=18)) 
+            then
+                if([MEMORY_FREE_LIST+[ptbr+i]]==1)  //NON SHARED HEAP PAGES
+                then
+                    multipush(R1,R2,R3,R4,R5,R6);
+                        R1=GET_SWAP_BLOCK;
+                        call MEMORY_MANAGER;                //RETURNS FREE BLOCK IN R0
+                    multipop(R1,R2,R3,R4,R5,R6);
+
+                    if(R0!=-1)
+                    then
+                        [DISK_MAP_TABLE + swap_proc*10 + (i/2)]=R0; //R0=DISK BLOCK NUMBERR
+
+                        multipush(R0,R1,R2,R3,R4,R5,R6);
+                            R1=DISK_STORE;
+                            R2=pid;
+                            R8=[ptbr+i];                        //MEMORY PAGE
+                            R9=R0;                              //DISK BLOCK
+                            call DEVICE_MANAGER;
+                        multipop(R0,R1,R2,R3,R4,R5,R6);
+                    
+                        multipush(R0,R1,R2,R3,R4,R5,R6);
+                            R1=RELEASE_PAGE;
+                            R2=[ptbr+i];
+                            call MEMORY_MANAGER;
+                        multipop(R0,R1,R2,R3,R4,R5,R6);
+
+                        [ptbr+i]=-1;                    //INVALIDATING THE HEAP PAGES
+                        [ptbr+i+1]="0000";
+                    endif;
+                endif;
+            endif;
+            
+
+            //INVALIDATING THE CODE PAGES;
+            if(i>=8 && i<=14)
+            then 
+                multipush(R1,R2,R3,R4,R5,R6);
+                    R1=RELEASE_PAGE;
+                    R2=[ptbr+i];
+                    call MEMORY_MANAGER;
+                multipop(R1,R2,R3,R4,R5,R6);
+
+                [ptbr+i]=-1;                    //INVALIDATING THE CODE PAGES
+                [ptbr+i+1]="0000"; 
+            endif;   
+        endif;
+
+        i=i+2;
+    endwhile;
+    /////////////////////////////////////////////////////////
+
+    [PROCESS_TABLE + swap_proc*16 + 6]=1;                       //SWAP FLAG OF SWAP PROCESS=1;
+    [SYSTEM_STATUS_TABLE + 4]=[SYSTEM_STATUS_TABLE + 4]+1;      //INCREASING THE SWAP COUNT
+    [SYSTEM_STATUS_TABLE + 5]=0;                                //AS SWAPPING IS FINISHED
+///////////////////////////////////////////////////////////////////////////////////////
+endif;
+
+
+
+
+if(function_num==SWAP_IN)
+then
+   
+    i=SHELL_PROCESS+1;
+    swap_proc=-1;
+    tick=-1;
+
+    while(i<MAX_PROC_NUM-1)
+    do
+        pcb=PROCESS_TABLE + i*16;
+       
+        if([pcb + 6]==1 && [pcb + 0]>tick && [pcb + 4]==READY)
+        then
+            tick=[pcb + 0];
+            swap_proc=i;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    if(swap_proc==-1)
+    then
+        [SYSTEM_STATUS_TABLE+5]=0;              //SETTING THE PAGING STATUS BACK TO 0
+        return;
+    endif;
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //SWAP IN BEGINS
+
+    [PROCESS_TABLE + swap_proc*16 + 0]=0;           //Setting the tick bit to 0
+    swapdiskmap=DISK_MAP_TABLE+ 10*swap_proc;       //R7=SWAPDISKMAPs
+    ptbr=[PROCESS_TABLE+swap_proc*16 + 14];
+
+    i=2;
+
+    while(i<10)
+    do
+        if([swapdiskmap + i]!=-1)       //INDICATES THAT PAGE HAS BEEN SWAPPED OUT
+        then
+            if((i>=2 && i<=3) ||(i>=8 && i<=9)) 
+            then
+                multipush(R1,R2,R3,R4,R5,R6,R7);
+                    R1=GET_FREE_PAGE;
+                    R2=pid;
+                    call MEMORY_MANAGER;                //RETURNS FREE BLOCK IN R0
+                multipop(R1,R2,R3,R4,R5,R6,R7);
+
+                if(R0!=-1)
+                then
+                    multipush(R0,R1,R2,R3,R4,R5,R6,R7);
+                        R1=DISK_LOAD;
+                        R2=pid;
+                        R8=[swapdiskmap + i];         //DISK BLOCK
+                        R9=R0;                                              //MEMORY PAGE
+                        call DEVICE_MANAGER;
+                    multipop(R0,R1,R2,R3,R4,R5,R6,R7);
+                
+                    multipush(R0,R1,R2,R3,R4,R5,R6,R7);
+                        R1=RELEASE_BLOCK;
+                        R2=[swapdiskmap + i];
+                        call MEMORY_MANAGER;
+                    multipop(R0,R1,R2,R3,R4,R5,R6,R7);
+
+                    [ptbr+2*i]=R0;                    //VALIDATING THE PAGE TABLE
+                    [ptbr+2*i+1]="0110";
+                
+                    [swapdiskmap + i]=-1;               //INVALIDATING THE DISK MAP TABLE
+                endif;
+            endif;
+        endif;
+
+        i=i+1;
+    endwhile;
+
+    [PROCESS_TABLE + swap_proc*16 + 6]=0;                       //SWAP FLAG OF SWAP PROCESS=0(SWAP IN);
+    [SYSTEM_STATUS_TABLE + 4]=[SYSTEM_STATUS_TABLE + 4]-1;      //DECREMENTING THE SWAP COUNT(SWAP IN)
+    [SYSTEM_STATUS_TABLE + 5]=0;                                //AS SWAPPING IS FINISHED
+    ///////////////////////////////////////////////////////////////////////////////////////
+endif;
+
+return;

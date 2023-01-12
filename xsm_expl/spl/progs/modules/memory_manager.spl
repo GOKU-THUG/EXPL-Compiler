@@ -1,0 +1,180 @@
+// breakpoint;
+alias function_num R1;
+
+if(function_num==RELEASE_PAGE)         //Release Page function:LIKE RELEASE TERMINAL
+then
+
+    alias page_num R2;
+
+    [MEMORY_FREE_LIST+page_num]=[MEMORY_FREE_LIST+page_num]-1;  //Decrement the memory free list.
+
+
+    if([MEMORY_FREE_LIST+page_num]==0)                  //Increment the Mem_free_count
+    then
+        [SYSTEM_STATUS_TABLE + 2]=[SYSTEM_STATUS_TABLE + 2]+1;
+    endif;
+
+    alias i R3;
+    i=0;
+    
+    while(i<16)
+    do
+        if([PROCESS_TABLE + i*16 + 4]==WAIT_MEM)
+        then
+            [PROCESS_TABLE + i*16 + 4]=READY;
+        endif;
+        i=i+1;
+    endwhile;
+	
+	// breakpoint;
+	return;
+endif;
+
+if(function_num==GET_FREE_BLOCK)
+then
+	alias i R3;
+	i=DISK_FREE_AREA;
+	
+	while(i<DISK_SWAP_AREA)
+	do
+		if([DISK_FREE_LIST + i]==0)
+		then
+			[DISK_FREE_LIST + i]=1;			
+			R0=i;
+			return;
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	R0=-1;
+	return;
+endif;
+
+if(function_num==RELEASE_BLOCK)
+then
+	alias block_num R2;
+	
+	[DISK_FREE_LIST + block_num]=[DISK_FREE_LIST + block_num]-1;
+	
+	return;
+endif;
+
+
+
+if(function_num==GET_CODE_PAGE)
+then
+	alias currentpid R2;
+	alias disk_block R8;
+	alias mem_page R0;
+	alias i R10;
+	alias j R11;
+	alias ptbr R12;
+	i=0;
+	
+	
+	while(i<16)
+	do
+		ptbr=[PROCESS_TABLE + i*16 + 14];		//PTBR	
+		j=4;
+		
+		
+		while(j<8)
+		do	
+			//print(i);
+			//print([DISK_MAP_TABLE + i*10 + j]);
+			//print([PAGE_TABLE_BASE+20*i+2*j]);
+			if([DISK_MAP_TABLE + i*10 + j]==disk_block && [PAGE_TABLE_BASE+20*i+2*j]!=-1)
+			then
+				mem_page=[PAGE_TABLE_BASE+20*i+2*j];										//RETURNS THE CODE PAGE;								
+				[MEMORY_FREE_LIST + mem_page]=[MEMORY_FREE_LIST + mem_page]+1;					//AS PAGE IS BEING SHARED BY ANOTHER PROCESS
+				return;
+			endif;
+			
+			j=j+1;
+		endwhile;	
+		
+		i=i+1;
+	endwhile;
+	
+	if(i==16)								//Either only this deallocated process uses this code page or the code page has not been loaded to memory
+	then
+		multipush(R1,R2,R3,R4,R8,R9);
+			R1=GET_FREE_PAGE;						//GET FREE PAGE
+			R2=[SYSTEM_STATUS_TABLE+1];
+			call MOD_2;							//MEMORY MANAGER
+		multipop(R1,R2,R3,R4,R8,R9);
+
+        multipush(R0,R1,R2,R3,R4,R8,R9);
+			R1=DISK_LOAD;							//DISK_LOAD
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R9=mem_page;
+			R8=disk_block;
+				
+			call MOD_4;							//DEVICE MANAGER
+		multipop(R0,R1,R2,R3,R4,R8,R9);
+	endif;	
+	
+	// breakpoint;						//assg2:print diskmaptable and page table
+	return;					
+endif;
+
+
+if(function_num==GET_FREE_PAGE)         //Get Free Page function:LIKE ACQUIRE TERMINAL:MEM_FREE_COUNT,WAIT_MEM_COUNT,MEM_FREE_LIST
+then
+
+    alias pid R2;
+    
+    [SYSTEM_STATUS_TABLE+3]=[SYSTEM_STATUS_TABLE+3]+1;  //INCREMENTING THE WAIT_MEM_COUNT.
+    
+    while([SYSTEM_STATUS_TABLE+2]==0)      //if MEM_FREE_LIST IS 0
+    do    
+        [PROCESS_TABLE + pid*16 + 4]=WAIT_MEM;
+        
+        multipush(R1,R2,R3,R4,R8,R9);
+        call MOD_5;                 //SCHEDULER MODULE;
+        multipop(R1,R2,R3,R4,R8,R9);
+    endwhile;
+
+    [SYSTEM_STATUS_TABLE+3]=[SYSTEM_STATUS_TABLE+3]-1;  //DECREMENTING THE WAIT_MEM_COUNT.
+    [SYSTEM_STATUS_TABLE+2]=[SYSTEM_STATUS_TABLE+2]-1;  //DECREMENTING THE MEM_FREE_COUNT.
+
+    alias i R3;
+
+    i=0;           //76-127 are available for user processes.
+
+    while(i<128)                //Getting a free page
+    do
+        if([MEMORY_FREE_LIST + i]==0)
+        then
+            [MEMORY_FREE_LIST + i]=1;
+            R0=i;
+            break;
+        endif;
+        i=i+1;
+    endwhile;
+
+    // breakpoint;
+    return;
+endif;
+
+if(function_num==GET_SWAP_BLOCK)
+then
+    alias i R3;
+    i=DISK_SWAP_AREA;
+
+    while(i<DISK_SIZE)
+    do
+        if([DISK_FREE_LIST + i]==0)
+        then
+            [DISK_FREE_LIST + i]=1;			
+            R0=i;
+            return;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    R0=-1;
+    return;
+endif;

@@ -1,0 +1,116 @@
+alias function_num R1;
+alias logical_addr R3;
+alias physical_addr R5;
+
+if (function_num==TERMINAL_WRITE)				//For terminal Write
+then
+
+    alias pid R2;
+	multipush(R1,R2,R3);
+
+	R1=8;						//To store the function number for acquiring terminal
+	R2=[SYSTEM_STATUS_TABLE+1];			//To store the current pid
+
+	call MOD_0;					//Resource manager:Acquire terminal
+
+	multipop(R1,R2,R3);
+
+	print R3;					//To print the value to be printed
+
+
+	multipush(R1,R2,R3);
+
+	R1=9;						//To store the function number for releasing terminal
+	R2=[SYSTEM_STATUS_TABLE+1];			//To store the current pid
+
+	call MOD_0;					//Resource manager:Release terminal
+
+	alias return_value R4;				//To get the return value returned by the release terminal function;
+	R4=R0;
+
+	multipop(R1,R2,R3);
+	
+endif;
+
+if  (function_num==TERMINAL_READ) 
+then
+    alias pid R2;
+	multipush(R1,R2,R3);
+	// breakpoint;
+	R1=8;                                                        //ACQUIRE_TERMINAL
+	call MOD_0;                                                 //Resource Manager
+	multipop(R1,R2,R3);
+		
+	// breakpoint;
+	read;
+	
+	[PROCESS_TABLE + pid*16 + 4]=WAIT_TERMINAL;
+	
+	multipush(R1,R2,R3);
+	call MOD_5;					//Scheduler Module
+	multipop(R1,R2,R3);
+	
+	physical_addr=([PTBR + 2*(logical_addr/512)]*512) + (logical_addr%512);	//ADDRESS TRANSLATION
+	[physical_addr]=[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 8];				//Word read(obtained from input buffer) is stored in R3
+
+endif;
+
+if(function_num==DISK_LOAD)
+then
+	// breakpoint;
+    alias pid R2;
+	multipush(R1,R2,R3,R8,R9);
+		R1=ACQUIRE_DISK;				//ACQUIRING THE DISK
+		R2=[SYSTEM_STATUS_TABLE+1];
+		call MOD_0;					//RESOURCE_MANAGER
+	multipop(R1,R2,R3,R8,R9);
+	
+	multipush(R1,R2,R3,R8,R9);	
+	
+        alias disk_block R8;
+		alias mem_page R9;
+		
+		// breakpoint;
+		[DISK_STATUS_TABLE+1]=0;			//load bit
+		[DISK_STATUS_TABLE+2]=mem_page;			//Page_number
+		[DISK_STATUS_TABLE+3]=disk_block;		//Block_number
+		load(mem_page,disk_block);			//LOAD INSTRUCTION;
+		
+		
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=WAIT_DISK;
+		call MOD_5;					//SCHEDULER MODULE
+		
+	multipop(R1,R2,R3,R8,R9);
+endif;
+
+if(function_num==DISK_STORE)
+then
+	
+	// breakpoint;
+	alias pid R2;
+	multipush(R1,R2,R3,R8,R9);
+		R1=ACQUIRE_DISK;				//ACQUIRING THE DISK
+		R2=[SYSTEM_STATUS_TABLE+1];
+		call MOD_0;					//RESOURCE_MANAGER
+	multipop(R1,R2,R3,R8,R9);
+	
+	multipush(R1,R2,R3,R8,R9);	
+	
+		alias mem_page R8;
+		alias disk_block R9;
+	
+		// breakpoint;
+		[DISK_STATUS_TABLE+1]=1;			//Store bit
+		[DISK_STATUS_TABLE+2]=mem_page;			//Page_number
+		[DISK_STATUS_TABLE+3]=disk_block;		//Block_number
+		
+		store(mem_page,disk_block);			//Store INSTRUCTION;
+		
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=WAIT_DISK;
+		call MOD_5;					//SCHEDULER MODULE
+		
+	multipop(R1,R2,R3,R8,R9);
+	
+endif;
+
+return;

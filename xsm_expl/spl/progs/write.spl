@@ -1,0 +1,13 @@
+alias userSP R3;
+alias physicalSP R4;
+alias data R5;
+
+userSP = SP;
+
+data = [[PTBR +  ( (userSP-3)/ 512 ) * 2] * 512 + (userSP-3) % 512];
+
+print(data);
+
+[[PTBR +  ( (userSP-1)/ 512 ) * 2] * 512 + ((userSP-1) % 512)]=0;
+
+ireturn;

@@ -1,0 +1,79 @@
+alias i R3;
+
+// breakpoint;
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 13]=SP;											//UPTR=SP
+SP=(([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 11]*512)-1); 		//Pointing to the kernel stack
+
+backup;
+
+////////////////////////////////////////////////////////////////////////////////////////
+//PAGER MODULE CODE
+
+//IF SWAPPING IS INITIATED
+if([SYSTEM_STATUS_TABLE+5]==SWAP_OUT || [SYSTEM_STATUS_TABLE+5]==SWAP_IN)
+then
+    if([SYSTEM_STATUS_TABLE+1]==SWAPPER_DAEMON && [SYSTEM_STATUS_TABLE+5]==SWAP_OUT)
+    then
+        R1=SWAP_OUT;
+        R2=[SYSTEM_STATUS_TABLE+1];
+        call PAGER_MODULE;
+    else
+        if([SYSTEM_STATUS_TABLE+1]==SWAPPER_DAEMON && [SYSTEM_STATUS_TABLE+5]==SWAP_IN)
+        then
+            R1=SWAP_IN;
+            R2=[SYSTEM_STATUS_TABLE+1];
+            call PAGER_MODULE;
+        endif;
+        // else if the current process is Idle,                          
+        // Swapping is ongoing, but the daemon is blocked for some disk operation and idle is being run now 
+        // Skip to the end to perform context switch. 
+    endif;
+
+
+else
+    if([SYSTEM_STATUS_TABLE+2]<MEM_LOW)         //SWAP OUT
+    then
+        [SYSTEM_STATUS_TABLE+5]=SWAP_OUT;           //PAGING STATUS=SWAP OUT
+    
+    else
+        if([SYSTEM_STATUS_TABLE+4]>0)       //SWAP COUNT>0:SWAPPED OUT PROCESSES EXIST
+        then
+            
+            i=SHELL_PROCESS+1;
+
+            while(i<MAX_PROC_NUM-1)
+            do
+                if([PROCESS_TABLE + i*16 + 6]==1 && ([PROCESS_TABLE + i*16 + 0]>MAX_TICK || [SYSTEM_STATUS_TABLE+2]>MEM_HIGH))
+                then
+                    [SYSTEM_STATUS_TABLE+5]=SWAP_IN;
+                    break;
+                endif;
+                i=i+1;
+            endwhile;
+        
+        endif;
+    
+    endif;
+endif;
+/////////////////////////////////////////////////////////////////////////
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 4]=READY;				//STATE:ie:Bringing the state back to ready so that in the next round this process can be executed again
+
+//INCREMENTING THE TICK VALUE OF EVERY NONTERMINATED PROCESS
+i=SHELL_PROCESS;
+while(i<MAX_PROC_NUM-1)
+do
+    [PROCESS_TABLE+i*16+0]=[PROCESS_TABLE+i*16+0]+1;    //Incrementing the tick field
+    i=i+1;
+endwhile;
+
+multipush(R3);
+call SCHEDULER;								//SCHEDULER MODULE
+multipop(R3);
+
+restore;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];								           //SP=UPTR:To execute from where we stopped in the prev execution of the current process
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16 + 9]=0;
+breakpoint;
+ireturn;
+

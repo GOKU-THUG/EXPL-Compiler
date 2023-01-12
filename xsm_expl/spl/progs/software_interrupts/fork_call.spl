@@ -1,0 +1,217 @@
+// breakpoint;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=8;		//Setting the mode flag to 8
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;		//UPTR=SP
+
+alias mem_page R0;
+alias function_num R1;
+alias userSP R2;						
+alias return_addr R3;
+alias child_pid R10;
+alias i R12;
+alias ptbr_child R13;
+
+userSP=SP;	
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512-1;	//SP=USERAREA PAGE	
+	 	
+// breakpoint;
+	
+	
+	function_num=GET_PCB_ENTRY;
+	call MOD_1;					//Process Manager
+	child_pid=R0;					//Stores  the return value which contains the pid of the child process
+	ptbr_child=[PROCESS_TABLE + child_pid*16 + 14];			//PTBR
+	return_addr=[PTBR+2*((userSP-1)/512)]*512 + ((userSP-1)%512);
+	
+	
+	
+	if(child_pid==-1)
+	then
+		[return_addr]=-1;
+
+	else
+	
+	    //Allocating 2 heap pages of the parent process:As it is allocated in the exception handler
+	    i=0;
+	    
+	    while(i<2)
+	    do
+		     if([PTBR+2*i+4]==-1)
+		     then
+			    multipush(R0,R1,R2,R3,R7,R8,R9,R10,R12,R13);
+			
+				R1=1;									//Get Free Page
+				R2=[SYSTEM_STATUS_TABLE+1];						//Allocating heap pages for the parent process so as to share it with the child process
+				call MOD_2;	                //Memory_page
+				mem_page=R0;
+				[PTBR+ 2*i + 4]=mem_page;
+				[PTBR+ 2*i + 5]="1110";
+			   multipop(R0,R1,R2,R3,R7,R8,R9,R10,R12,R13);	  
+		    endif;
+		    
+		    i=i+1;
+	    endwhile;
+	   	
+	    //CHILD PROCESS INITIALIZATIONS:2 STACK PAGES,1 USER AREA PAGE,PROCESS TABLE,PERPROCESS RESOURCE TABLE,PERPROCESS DISK MAP TABLE
+		
+		
+		    //Allocating 2 stack pages and 1 user area page for child process
+		    multipush(R0,R1,R2,R3,R7,R8,R9,R10,R12,R13);
+			
+			R1=1;									//Get Free Page
+			R2=child_pid;
+			call MOD_2;	                //Memory_page
+			mem_page=R0;								//Stack page 1 of child process
+			[ptbr_child+16]=mem_page;						//Page table of stack page 1
+			[ptbr_child+17]="0110";						//Auxiliary information of stack page 1
+			
+			R1=1;									//Get Free Page
+			R2=child_pid;
+			call MOD_2;
+			mem_page=R0;                						//Stack page 2 of child process
+			[ptbr_child+18]=mem_page;						//Page table of stack page 2
+			[ptbr_child+19]="0110";						//Auxiliary information of stack page 2
+			
+			R1=1;									//Get Free Page
+			R2=child_pid;
+			call MOD_2;
+			mem_page=R0; 
+			[PROCESS_TABLE + child_pid*16 + 11]=mem_page;				//USER AREA PAGE of child process
+			
+		    multipop(R0,R1,R2,R3,R7,R8,R9,R10,R12,R13);
+
+	
+		alias offset R15;
+		alias base_addr R14;
+		alias child_base_addr R7;
+		
+		base_addr=PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16;
+		child_base_addr=PROCESS_TABLE + child_pid*16;
+		
+		//PROCESS TABLE
+		
+		[child_base_addr + 3]=[base_addr + 3];	//USER ID
+		[child_base_addr + 6]=[base_addr + 6];	//Swap Flag
+		[child_base_addr + 10]=[base_addr + 10];	//User Area Swap Status
+		[child_base_addr + 7]=[base_addr + 7];	//Inode Index
+		[child_base_addr + 13]=[base_addr + 13];	//UPTR
+		
+		[child_base_addr + 9]=0;				//SETTING THE MODE BIT TO 0;
+		[child_base_addr + 12]=0;				//KPTR
+		[child_base_addr + 0]=0;				//TICK BIT
+		[child_base_addr + 2]=[SYSTEM_STATUS_TABLE+1];	//PPID
+		[child_base_addr + 4]=CREATED;			//State
+
+
+		i=0;
+		
+		base_addr=[PTBR+16]*512;
+		child_base_addr=[ptbr_child+16]*512;
+		
+		//COPYING THE USER STACK CONTENTS OF PARENT PROCESS TO CHILD PROCESS
+		while(i<512)
+		do
+			[child_base_addr + i]=[base_addr + i];
+			[[ptbr_child+18]*512 + i]=[[PTBR+18]*512 + i];
+			
+			i=i+1;
+		endwhile;
+		
+		//USER AREA PAGE HAS BEEN SET IN THE PROCESS TABLE ABOVE DURING ALLOCATION
+		
+		
+		alias process_count R8;
+		alias semid R9;
+		alias open_entry R11;
+		
+		base_addr=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512;
+		child_base_addr=[PROCESS_TABLE + child_pid*16 + 11]*512;
+		offset=496;
+		
+		//Copying the per process resource table of parent process to child process
+		while(offset<=511)			//Initializing the perprocess resource table as last 16 words of the user stack are occupied by the per process resource table;
+		do
+			[child_base_addr+offset]=[base_addr+offset];					//Copying all the resources of parent to child as well
+			
+			if(offset%2==0)		//If the resource identifier indicates a semaphore
+			then
+				if([base_addr + offset]==1)						//FOR SEMAPHORES
+				then
+					semid=[base_addr + offset + 1];
+					process_count=SEMAPHORE_TABLE+4*semid+1;
+					[process_count]=[process_count]+1;				//Incrementing the process count;
+				endif;
+				
+				if([base_addr + offset]==0)						//FOR FILES
+				then
+					open_entry=[base_addr + offset + 1];
+					process_count=OPEN_FILE_TABLE + 4*open_entry + 1;		//OPEN INSTANCE COUNT
+					[process_count]=[process_count]+1;				//Incrementing the process count;
+				endif;
+			endif;	
+			
+			
+			offset=offset+1;
+		endwhile;
+		
+		
+		
+		//Copying the per process disk map table of parent process to child process
+		i=2;
+		
+		base_addr=DISK_MAP_TABLE + [SYSTEM_STATUS_TABLE+1]*10;
+		child_base_addr=DISK_MAP_TABLE + child_pid*10;
+		
+		while(i<=9)
+		do
+			if(i==8 || i==9)
+			then
+				[child_base_addr + i]=-1;
+				[base_addr + i]=-1;
+			else
+				[child_base_addr + i]=[base_addr+i];
+			endif;
+			i=i+1;
+		endwhile;
+		
+		//Initializing the page table of child process and Incrementing the memory free list of heap,code and stack.
+		i=0;
+		
+		while(i<=7)
+		do
+			if([PTBR+2*i]!=-1)
+			then
+				base_addr=MEMORY_FREE_LIST+ [PTBR + 2*i];
+				[base_addr]=[base_addr]+1;
+			endif;
+			
+			[ptbr_child + 2*i]=[PTBR + 2*i];
+			[ptbr_child + 2*i + 1]=[PTBR + 2*i + 1];
+			
+			
+			i=i+1;
+		endwhile;
+		
+		[[PROCESS_TABLE + child_pid*16 + 11]*512]=BP;			//Storing BP in kernel stack
+		
+		alias childuserSP R14;
+		alias child_return_addr R12;
+		
+		childuserSP=[PROCESS_TABLE + child_pid*16 + 13];
+		
+		userSP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];
+
+		child_return_addr=[ptbr_child+2*((childuserSP-1)/512)]*512 + ((childuserSP-1)%512);
+		
+		[return_addr]=child_pid;
+		[child_return_addr]=0;
+	endif;
+
+// breakpoint;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;		//Setting the mode flag to 0
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];		//SP=UPTR
+
+// breakpoint;
+ireturn;
+

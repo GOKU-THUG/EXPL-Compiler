@@ -1,0 +1,246 @@
+// breakpoint;
+
+alias userSP R0;
+alias descriptor_phys_pg_no R1;
+alias descriptor_phy_address R2;
+alias system_call_val R3;
+alias i R4;
+alias return_address R5;
+alias file R6;
+alias perm R7;
+alias j R8;
+alias k R9;
+alias temp1 R12;
+alias temp2 R13;
+
+temp2=PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16;
+
+[temp2 + 13]=SP;				//UPTR=SP
+userSP=SP;
+
+SP=[temp2 + 11]*512-1;			//SP=User Area Page
+
+system_call_val=[[PTBR+2*((userSP-5)/512)]*512 + (userSP-5)%512];
+
+file=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];
+
+return_address=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+if(system_call_val==1)							        //Create file System call
+then
+		
+	[temp2 + 9]=1;		//MODE BIT=1
+	
+	i=0;
+
+	while(i<MAX_FILE_NUM)
+	do
+		if([INODE_TABLE + i*16 + 1]==file)			//If file has already been created
+		then
+			[return_address]=0;
+			[temp2 + 9]=0;
+			SP=[temp2 + 13];
+			ireturn;
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	i=0;
+	
+	while(i<MAX_FILE_NUM)
+	do
+		
+		if([INODE_TABLE + i*16 + 1]==-1)			//If free entry is present by checking if the filename section is -1.
+		then
+			break;		
+		endif;
+		
+		i=i+1;
+	endwhile;
+		
+
+	if(i==MAX_FILE_NUM)
+	then
+		[return_address]=-1;
+		[temp2 + 9]=0;
+		SP=[temp2 + 13];
+		ireturn;
+	endif;
+
+        temp1=INODE_TABLE + i*16;
+	temp2=ROOT_FILE + i*8;
+	
+	perm=[[PTBR+2*((userSP-3)/512)]*512 + (userSP-3)%512];
+	
+	[temp1 + 0]=DATA;
+	[temp1 + 1]=file;
+	[temp1 + 2]=0;
+	[temp1 + 3]=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 3];
+	[temp1 + 4]=perm;	
+	[temp1 + 8]=-1;
+	[temp1 + 9]=-1;
+	[temp1 + 10]=-1;
+	[temp1 + 11]=-1;
+	
+	[temp2 + 0]=file;
+	[temp2 + 1]=0;
+	[temp2 + 2]=DATA;
+	[temp2 + 3]=[USER_TABLE + 2*[temp1 + 3]];
+	[temp2 + 4]=perm;
+	
+	[return_address]=0;	
+	
+	
+endif;
+
+
+if(system_call_val==4)								//Delete file system call
+then
+		
+	[temp2 + 9]=4;			//MODE BIT=4
+	
+	i=0;
+	
+	while(i<MAX_FILE_NUM)
+	do
+		if([INODE_TABLE + i*16 + 1]==file)					//If file is found;
+		then
+			break;	
+		endif;
+		
+		i=i+1;
+	endwhile;
+
+	if(i==MAX_FILE_NUM)
+	then
+		[return_address]=0;							//To indicate that the file has already been deleted.
+		[temp2 + 9]=0;
+		SP=[temp2 + 13];
+
+		ireturn;
+	endif;
+	
+	temp1=INODE_TABLE + i*16;
+	
+	if([temp1]!=DATA)								//To indicate that the file is invalid
+	then
+		[return_address]=-1;						
+		[temp2 + 9]=0;
+		SP=[temp2 + 13];
+
+		ireturn;
+	endif;
+			
+	if([temp1 + 4]==0)					//If it has exclusive permission(ie:Not open to all)
+	then
+		if([temp1 + 3]!=1 &&  [temp1+3]!=[temp2+3])	    //If the user is not root or the current userid is not same as the owner of the file.
+		then
+			[return_address]=-1;				
+			[temp2 + 9]=0;
+			SP=[temp2 + 13];
+
+			ireturn;
+		endif;	
+	endif;
+	
+	multipush(R4,R5,R6,R12,R13);				//To lock the inode so that no other process now uses this file and the file can be deleted safely.
+	R1=ACQUIRE_INODE;
+	R2=[SYSTEM_STATUS_TABLE+1];
+	R3=i;
+	call MOD_0;
+	
+	R10=R0;							//Resource Manager
+	multipop(R4,R5,R6,R12,R13);
+	
+	
+	
+	if([FILE_STATUS_TABLE + i*4 + 1]!=-1)				//File is open by some other process and hence deletion canot be done.
+	then
+		
+		multipush(R4,R5,R6,R12,R13);				//To unlock the inode as that file is already opened by another process and cannot be deleted.
+		R1=RELEASE_INODE;						//Release Inode
+		R2=[SYSTEM_STATUS_TABLE+1];
+		R3=i;
+		call MOD_0;							//Resource Manager
+		multipop(R4,R5,R6,R12,R13);
+		
+		[return_address]=-2;
+		[temp2 + 9]=0;
+		SP=[temp2 + 13];
+
+		ireturn;
+	endif;	
+	
+	
+	j=0;
+	
+	temp1=INODE_TABLE + i*16 + 8;
+	
+	while(j<4)
+	do
+		if([temp1 + j]!=-1)
+		then
+			k=0;
+			
+			while(k<4)
+			do
+				
+				temp2=BUFFER_TABLE + 4*k;
+				
+				if([temp2]==[temp1 + j] && [temp2 + 1]==1)
+				then
+					[temp2 + 1]=0;
+				endif;
+
+				k=k+1;
+			endwhile;
+			
+			multipush(R4,R5,R6,R8,R9,R12,R13);				
+			R1=RELEASE_BLOCK;						//Release Block
+			R2=[temp1 + j];
+			call MOD_2;							//Memory Manager:To release that disk block
+			multipop(R4,R5,R6,R8,R9,R12,R13);
+		endif;
+		
+		j=j+1;
+	endwhile;
+		
+	//Invalidating the Inode table
+	temp1=INODE_TABLE + i*16;
+	j=0;
+	
+	while(j<16)
+	do
+		[temp1 + j]=-1;
+		j=j+1;
+	endwhile;
+	
+	
+	
+	//Invalidating the Root file
+	temp2=ROOT_FILE + i*8;
+	j=0;
+	
+	while(j<8)
+	do
+		[temp2 + j]=-1;
+		j=j+1;
+	endwhile;
+	
+	multipush(R5);				//To lock the inode so that no other process now uses this file and the file can be deleted safely.
+	R1=RELEASE_INODE;
+	R2=[SYSTEM_STATUS_TABLE+1];
+	R3=i;																					
+	call MOD_0;							       //Resource Manager
+	multipop(R5);
+	
+	[return_address]=0;
+	
+endif;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];
+
+ireturn;
+

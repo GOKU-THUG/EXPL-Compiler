@@ -1,0 +1,198 @@
+alias userSP R0;
+alias descriptor_physical_pg_no R1;
+alias descriptor_phys_address R2;
+alias file_name R3;
+alias start_addr R4;
+alias i R5;
+alias inode_index R6;
+alias return_addr R7;
+alias disk_block R8;
+alias mem_page R9;
+alias count R10;
+
+// breakpoint;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;	//storing the user stack
+userSP=SP;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512-1;	//SP=kernel stack;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=9; 	//Setting up the mode bit
+
+descriptor_physical_pg_no=[PTBR + 2*((userSP-4)/512)];
+descriptor_phys_address=(descriptor_physical_pg_no*512) + ((userSP-4)%512);
+file_name=[descriptor_phys_address];
+
+return_addr=[PTBR + 2*((userSP-1)/512)]*512+ ((userSP-1)%512); 	
+
+start_addr=INODE_TABLE;
+i=0;
+
+
+while(i<60)
+do
+	if([start_addr + i*16 + 0]==EXEC && [start_addr + i*16 + 1]==file_name)
+	then
+		
+		break;
+	endif;
+	i=i+1;
+endwhile;
+
+if(i==60)
+then	
+	[return_addr]=-1;								//Storing the return value as -1;
+	SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16+13];				//SP=userstack of earlier process
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;
+
+else
+	
+	inode_index=i;
+	
+	
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+	R1=3;									//Exit Function
+	R2=[SYSTEM_STATUS_TABLE+1];
+	call MOD_1;								//PROCESS_MANAGER MODULE:Free User Area Page and Free Page Table;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+	
+	//Acquiring the same user area page for the new process
+	
+	[MEMORY_FREE_LIST+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]]=1;	//Reallocating the same user area page.
+	[SYSTEM_STATUS_TABLE + 2]=[SYSTEM_STATUS_TABLE + 2]-1;			//Decrementing the MEM_FREE_COUNT
+	
+	// breakpoint;	
+	SP=([PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512)-1;	//SP=kernel stack;
+	
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=RUNNING;	//Set the state to running
+	
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 7]=inode_index;		//Stores the inode index of the process in the process table
+	
+	
+	alias offset R13;
+	alias base_addr R14;
+	
+	base_addr=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512;
+	offset=496;
+	
+	while(offset<=511)							//Initializing the perprocess resource table as last 16 words of the user stack are occupied by the per process resource table;
+	do
+		[base_addr+offset]=-1;				
+		offset=offset+1;
+	endwhile;
+	
+	
+	// breakpoint;
+	
+	//Allocating library pages
+	[PTBR+0]=63;
+	[PTBR+1]="0100";
+
+	[PTBR+2]=64;
+	[PTBR+3]="0100";
+
+	//Heap
+	[PTBR+4] = -1;
+	[PTBR+5] = "0000";
+
+	[PTBR+6] = -1;
+	[PTBR+7] = "0000";
+	
+    // breakpoint;
+	//Reallocation of pages
+
+    //Allocating 2 stack pages
+    multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+	
+        R1=1;									//Get Free Page
+        R2=[SYSTEM_STATUS_TABLE+1];
+        call MOD_2;	                //Memory_page
+        mem_page=R0;
+        [PTBR+16]=mem_page;
+        [PTBR+17]="0110";
+
+	R1=1;									//Get Free Page
+        R2=[SYSTEM_STATUS_TABLE+1];
+        call MOD_2;
+        mem_page=R0;                //Stores the return value;
+        [PTBR+18]=mem_page;
+        [PTBR+19]="0110";
+        
+    multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+
+
+    // breakpoint;
+	
+	//Initializing the disk map table for the new process
+	i=0;
+	while(i<10)
+	do
+		[DISK_MAP_TABLE + [SYSTEM_STATUS_TABLE+1]*10 + i]=-1;
+		i=i+1;
+	endwhile;
+	
+	
+	//Loading only first code page from disk to memory
+	i=8;
+	count=0;
+	inode_index=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 7];
+	
+	while(count<=3)                        //4 data blocks
+	do
+		disk_block=[INODE_TABLE + (inode_index*16) + (i + count)];						//INODE_TABLE:Acessing the disk blocks of the new process from the inode table
+		if(disk_block!=-1)
+		then			
+			if(count==0)									//First code page is only allocated as exception will allocate rest of the pages during page fault
+			then
+				multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+		      
+					R1=GET_CODE_PAGE;							//Get CodePage
+					R2=[SYSTEM_STATUS_TABLE+1];
+					R8=disk_block;
+					call MOD_2;						//Memory manager module(get code page)	
+				
+					[PTBR+ 8]=R0;						//Validating the page table entries for the first code page.
+					[PTBR + 9]="0100";
+				multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10);
+			endif;
+		else
+			if(count==0)
+			then
+				[PTBR + 8] = -1;
+				[PTBR + 9] = "0000";
+			endif;
+		endif;
+		
+		[DISK_MAP_TABLE + [SYSTEM_STATUS_TABLE+1]*10 + (4+count)]=disk_block;				//DISK MAP TABLE:STORING THE CODE PAGES.
+		
+		count=count+1;
+	endwhile;
+	
+	//invalidating the other 3 code pages
+	[PTBR + 10] = -1;
+	[PTBR + 11] = "0000";
+	[PTBR + 12] = -1;
+	[PTBR + 13] = "0000";
+	[PTBR + 14] = -1;
+	[PTBR + 15] = "0000";	
+
+    	// breakpoint;
+	
+	alias entry_point R11;
+	alias first_stack_page R12;
+	alias first_code_page R13;
+	
+	first_code_page=[[PTBR + 8]*512 + 1];			
+	first_stack_page=[PTBR + 16];
+	[first_stack_page*512]=first_code_page;     							//Storing the entry point value
+
+	SP=8*512;											//Switching back to user mode;	
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0; 						//Clearing the mode bit
+	[return_addr]=0;
+endif;
+// breakpoint;
+ireturn;
+
+
+
+
+

@@ -1,0 +1,232 @@
+// breakpoint;
+alias function_num R1;
+alias temp1 R2;
+alias i R4;
+alias temp2 R12;
+alias inode_index R13;
+
+if(function_num==OPEN)
+then
+	alias file R3;
+		
+	temp2=PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16;
+	[temp2+9]=4;									//MODE BIT=4
+	
+	i=0;
+	
+	while(i<MAX_FILE_NUM)
+	do
+		if([INODE_TABLE + i*16 + 1]==file)					//If file is found;
+		then
+			break;		
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	temp1=INODE_TABLE + i*16;
+	inode_index=i;
+	
+	if(i==MAX_FILE_NUM)
+	then
+		R0=-1;							//To indicate that the file has already been deleted.
+		return;
+	endif;
+	
+	multipush(R1,R2,R3,R4,R12,R13);					//To lock the inode so that no other process now uses this file and the file can be deleted safely.
+		R1=ACQUIRE_INODE;
+		R2=[SYSTEM_STATUS_TABLE+1];
+		R3=inode_index;
+		call MOD_0;						//Resource Manager
+		
+		R10=R0;
+	multipop(R1,R2,R3,R4,R12,R13);
+	
+	if(R10==-1)							//There is no such file:
+	then	
+		R0=-1;
+		return;
+	endif;
+	
+	if([temp1]==EXEC)						//To indicate that the file is invalid
+	then
+		multipush(R1,R2,R3,R4,R12,R13);				//To unlock the inode as that file is already opened by another process and cannot be deleted.
+			R1=RELEASE_INODE;				//Release Inode
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R3=inode_index;
+			call MOD_0;					//Resource Manager
+		multipop(R1,R2,R3,R4,R12,R13);
+		
+		R0=-1;
+		return;
+	endif;
+	
+	
+	
+	i=0;
+	
+	while(i<MAX_OPENFILE_NUM)
+	do
+		if([OPEN_FILE_TABLE + 4*i]==-1)
+		then
+			break;
+		endif;
+		
+		i=i+1;
+	endwhile;
+	
+	
+	if(i==MAX_OPENFILE_NUM)
+	then
+		
+		multipush(R1,R2,R3,R4,R12,R13);				//To unlock the inode as that file is already opened by another process and cannot be deleted.
+			R1=RELEASE_INODE;				//Release Inode
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R3=inode_index;
+			call MOD_0;					//Resource Manager
+		multipop(R1,R2,R3,R4,R12,R13);
+		
+		R0=-2;							//To indicate that the file has already been deleted.
+		return;
+	endif;
+	
+	if(file=="root")
+	then
+		[OPEN_FILE_TABLE + 4*i]=INODE_ROOT;			//INODE INDEX FIELD IN OPEN FILE TABLE
+	
+	else
+		temp1=FILE_STATUS_TABLE + 4*inode_index;
+		
+		if([temp1 + 1]==-1)					//FILE OPEN COUNT
+		then
+			[temp1 + 1]=1;
+		else
+			[temp1 + 1]=[temp1 + 1]+1;
+		endif;
+		
+		[OPEN_FILE_TABLE + 4*i]=inode_index;			// OPEN INSTANCE COUNT
+	endif;
+			
+	[OPEN_FILE_TABLE + 4*i + 1]=1;		//OPEN INSTANCE COUNT
+	[OPEN_FILE_TABLE + 4*i + 2]=0;		//LSEEK
+	
+	multipush(R1,R2,R3,R4,R12,R13);					//To unlock the inode as that file is already opened by another process and cannot be deleted.
+			R1=RELEASE_INODE;						//Release Inode
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R3=inode_index;
+			call MOD_0;							//Resource Manager
+	multipop(R1,R2,R3,R4,R12,R13);
+	
+	R0=i;
+	
+	return;
+endif;
+
+
+if(function_num==CLOSE)
+then
+	alias entry R3;
+	
+	inode_index=[OPEN_FILE_TABLE + 4*entry];
+	
+	[OPEN_FILE_TABLE + 4*entry + 1]=[OPEN_FILE_TABLE + 4*entry + 1]-1;				//OPEN INSTANCE COUNT
+	
+	if([OPEN_FILE_TABLE + 4*entry + 1]==0)
+	then
+			[OPEN_FILE_TABLE + 4*entry]=-1;
+			[OPEN_FILE_TABLE + 4*entry + 1]=-1;
+			[OPEN_FILE_TABLE + 4*entry + 2]=-1;
+			[OPEN_FILE_TABLE + 4*entry + 3]=-1;
+			
+			if([INODE_TABLE + inode_index*16 + 1]!="root")
+			then
+				temp1=FILE_STATUS_TABLE + 4*inode_index;
+				
+				[temp1 + 1]=[temp1 + 1]-1;
+				
+				if([temp1+1]==0)
+				then
+					[temp1 + 1]=-1;
+				endif;
+			endif;
+	endif;
+	
+	return;	
+endif;
+
+
+if(function_num==BUFFERED_READ || function_num==BUFFERED_WRITE)
+then
+	alias disk_num R3;
+	alias offset R4;
+	alias buffer_num R9;
+	
+	buffer_num=(disk_num%4);							//BUFFER NUMBER
+	
+	multipush(R1,R3,R4,R5,R9,R12,R13);						//So as to check for a free buffer which is not locked
+		R1=ACQUIRE_BUFFER;
+		R2=[SYSTEM_STATUS_TABLE + 1];
+		R3=buffer_num;
+		call MOD_0;
+	multipop(R1,R3,R4,R5,R9,R12,R13);
+	
+	temp2=BUFFER_TABLE+4*buffer_num;
+	
+	if([temp2]!=disk_num)								//If the disk number is different 
+	then
+		if([temp2 + 1]==1)							//Checking the dirty bit
+		then
+			multipush(R1,R3,R4,R5,R9,R12,R13);
+				R1=DISK_STORE;
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R8=BUFFER_BASE+buffer_num;				//Memory Page of Buffer Cache
+				R9=[temp2];						//Disk Block number to write back to
+				call MOD_4;
+			multipop(R1,R3,R4,R5,R9,R12,R13);
+			
+			[temp2+1]=0;
+		endif;
+		
+		multipush(R1,R3,R4,R5,R9,R12,R13);
+				R1=DISK_LOAD;
+				R2=[SYSTEM_STATUS_TABLE+1];
+				R8=disk_num;						//Disk block number
+				R9=BUFFER_BASE+buffer_num;				//Memory Page of Buffer Cache
+				call MOD_4;
+		multipop(R1,R3,R4,R5,R9,R12,R13);
+		
+		[temp2]=disk_num;							//Setting the new disk block in buffer table
+	endif;
+	
+	if(function_num==BUFFERED_READ)
+	then
+		alias read_addr R5;
+		[read_addr]=[(BUFFER_BASE+buffer_num)*512 + offset];				//Storing the content at that location to the input variable
+	endif;
+	
+	if(function_num==BUFFERED_WRITE)
+	then
+		alias write_val R5;
+		
+		[(BUFFER_BASE+buffer_num)*512 + offset]=write_val;
+		[temp2+1]=1;									//Setting the dirty bit
+		
+	endif;
+	
+	
+	multipush(R1,R3,R4,R5,R9,R12,R13);						//So as to check for a free buffer which is not locked
+		R1=RELEASE_BUFFER;
+		R2=[SYSTEM_STATUS_TABLE + 1];
+		R3=buffer_num;
+		call MOD_0;
+	multipop(R1,R3,R4,R5,R9,R12,R13);
+	
+	return;
+endif;
+
+
+
+
+
+
+

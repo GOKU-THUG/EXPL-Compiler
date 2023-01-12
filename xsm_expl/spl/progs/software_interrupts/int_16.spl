@@ -1,0 +1,244 @@
+//NEWUSER,REMOVEUSER,SETPWD,GETUID,GETUSERNAME;
+
+alias return_addr R0;
+alias userSP R1;
+alias username R2;
+alias password R3;
+alias sys_call_no R4;
+alias userid R5;
+alias i R6;
+alias currentpcb R7;
+
+currentpcb=PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16;
+
+[currentpcb + 13]=SP;			    //UPTR=SP
+userSP = SP;
+
+SP=[currentpcb+ 11]*512 - 1;		//SP=USERAREA PAGE
+
+sys_call_no=[[PTBR+2*((userSP-5)/512)]*512 + (userSP-5)%512];		//sys_call_no
+username=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];
+return_addr=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+////////////////////////////////////////////////////////////////////////////////////
+if(sys_call_no==22)                                                 //NEW USER
+then
+
+    [currentpcb+ 9]=22;	
+
+    password=[[PTBR+2*((userSP-3)/512)]*512 + (userSP-3)%512];
+
+    if([SYSTEM_STATUS_TABLE]!=1 || [SYSTEM_STATUS_TABLE+1]!=2)      //Permission denied
+    then
+        [return_addr]=-2;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    i=0;
+    userid=-1;
+
+    while (i<MAX_USER_NUM) //User already Exists
+    do
+        if([USER_TABLE + 2*i]==username)
+        then
+            [return_addr]=-1;
+            [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+            SP=[currentpcb+ 13];			//SP=UPTR
+            ireturn;
+        endif;
+
+        if(userid==-1 && [USER_TABLE + 2*i]==-1 && [USER_TABLE+ 2*i+1]==-1)
+        then
+            userid=i;
+        endif;
+
+        i=i+1;
+    endwhile;
+
+    if(userid==-1)         //USERS MAX LIMIT REACHED
+    then
+        [return_addr]=-3;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    encrypt password;                                               //Encrypting the password;
+
+    [USER_TABLE + 2*userid]=username;
+    [USER_TABLE + 2*userid + 1]=password;
+
+    [return_addr]=0;
+endif;
+/////////////////////////////////////////////////////////////////////////////////////
+if(sys_call_no==23)                                                 //REMOVE USER
+then
+    
+    [currentpcb+ 9]=23;	
+    
+    if(([SYSTEM_STATUS_TABLE]!=1 || [SYSTEM_STATUS_TABLE+1]!=2) || (username=="root" || username=="kernel"))      //Permission denied
+    then
+        [return_addr]=-2;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    i=0;
+
+    while(i<MAX_USER_NUM)
+    do
+        
+        if([USER_TABLE + 2*i]==username)
+        then
+            userid=i;
+            break;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    if(i==MAX_USER_NUM)
+    then
+        [return_addr]=-1;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    i=0;
+
+    while(i<MAX_FILE_NUM)
+    do
+        if([ROOT_FILE+8*i+3]==username)                                 //If files are owned by this user meant to be deleted
+        then
+            [return_addr]=-3;
+            [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+            SP=[currentpcb+ 13];			//SP=UPTR
+            ireturn;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    //INVALIDATING THE USERNAME AND PASSWORD OF THE DELETED USER
+    [USER_TABLE + 2*userid]=-1;
+    [USER_TABLE + 2*userid+1]=-1;
+
+    [return_addr]=0;
+endif;
+///////////////////////////////////////////////////////////////////
+if(sys_call_no==24)                                                 //SET PASSWORD
+then  
+    [currentpcb+ 9]=24;	
+
+    password=[[PTBR+2*((userSP-3)/512)]*512 + (userSP-3)%512];
+
+    if([SYSTEM_STATUS_TABLE+1]!=2)                                  //NOT SHELL PROCESS
+    then
+        [return_addr]=-1;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    i=0;
+
+    while(i<MAX_USER_NUM)
+    do
+        if([USER_TABLE+2*i]==username)
+        then
+            userid=i;
+            break;
+        endif;
+        
+        i=i+1;
+    endwhile;
+
+    if(i==MAX_USER_NUM)         //ENTRY NOT FOUND
+    then
+        [return_addr]=-2;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    if([currentpcb+ 3]!=userid)        //If current user != user who's password we want to reset
+    then
+        if([SYSTEM_STATUS_TABLE]!=1)        //Current user is not root
+        then
+            [return_addr]=-1;
+            [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+            SP=[currentpcb+ 13];			//SP=UPTR
+            ireturn;
+        endif;
+    endif;
+
+    encrypt password;                           //Encrypts the Password
+
+    [USER_TABLE + 2*userid + 1]=password;       //Resetting the password                   
+
+    [return_addr]=0;
+endif;
+////////////////////////////////////////////////////////////////////////////////
+if(sys_call_no==25)                                                 //GET USERNAME
+then  
+    [currentpcb+ 9]=25;	
+    
+    userid=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];
+
+    if(userid<0 || userid>15)
+    then
+        [return_addr]=-1;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];			//SP=UPTR
+        ireturn;
+    endif;
+
+    if([USER_TABLE + 2*userid]==-1)                                 //if Username is invalid
+    then
+        [return_addr]=-1;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];		//SP=UPTR
+        ireturn;
+    endif;
+
+    username=[USER_TABLE + 2*userid];
+    
+    [return_addr]=username;                                                //Returns the username
+endif;
+////////////////////////////////////////////////////////////////////////////////
+if(sys_call_no==26)                                                     //GET UID
+then  
+    [currentpcb+ 9]=26;	
+
+    i=0;
+
+    while(i<MAX_USER_NUM)
+    do
+        if([USER_TABLE+2*i]==username)
+        then
+            userid=i;
+            break;
+        endif;
+       
+        i=i+1;
+    endwhile;
+
+    if(i==MAX_USER_NUM)
+    then
+        [return_addr]=-1;
+        [currentpcb+ 9]=0;			//MODE FLAG BIT=0;
+        SP=[currentpcb+ 13];		//SP=UPTR
+        ireturn;
+    endif;
+
+    [return_addr]=userid;
+endif;
+/////////////////////////////////////////////////////////////////////////////////
+[currentpcb+ 9]=0;			            //MODE FLAG BIT=0;
+SP=[currentpcb+ 13];			        //SP=UPTR
+
+ireturn;

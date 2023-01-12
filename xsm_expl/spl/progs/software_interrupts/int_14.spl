@@ -1,0 +1,105 @@
+// breakpoint;
+alias userSP R0;
+alias descriptor_phys_pg_no R10;
+alias descriptor_phy_address R2;
+alias system_call_val R3;
+alias return_address R5;
+
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;				//UPTR=SP
+userSP=SP;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512-1;			//SP=User Area Page
+
+descriptor_phys_pg_no=[PTBR+2*((userSP-5)/512)];				
+descriptor_phy_address=(descriptor_phys_pg_no*512) + ((userSP-5)%512);
+system_call_val=[descriptor_phy_address];
+
+return_address=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+if(system_call_val==19)											//SEMLOCK
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=19;						//MODE BIT=19
+	
+	alias semdesc R8;
+	alias semid R11;	
+	semdesc=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];
+
+
+	if(semdesc>=0 && semdesc<=7 && [[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc]==SEMAPHORE)
+	then
+		
+		semid=[[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc+1];
+		
+		while([SEMAPHORE_TABLE + 4*semid]!=-1 && [SEMAPHORE_TABLE + 4*semid]!=[SYSTEM_STATUS_TABLE + 1])
+		do
+			[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 4]=WAIT_SEMAPHORE;
+			[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 5]=semid;
+			
+			multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R11,R12,R13,R14,R15);
+			call MOD_5;
+			multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R11,R12,R13,R14,R15);									//SCHEDULER MODULE
+		endwhile;
+		
+		[SEMAPHORE_TABLE + 4*semid]=[SYSTEM_STATUS_TABLE+1];					//Locking process=pid;
+		[return_address]=0;
+	
+	else
+		[return_address]=-1;
+	endif;
+
+endif;
+
+
+
+
+if(system_call_val==20)											//UNLOCKING PID;
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=20;						//MODE BIT=20
+	
+	alias semdesc R8;
+	alias semid R11;	
+	semdesc=[[PTBR+2*((userSP-4)/512)]*512 + (userSP-4)%512];
+
+
+	if(semdesc>=0 && semdesc<=7 && [[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc]!=-1)
+	then
+		semid=[[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc+1];
+		[return_address]=0;
+		
+		if([SEMAPHORE_TABLE + (4*semid)]!=-1)							//If it is locked
+		then
+			if([SEMAPHORE_TABLE + (4*semid)]!=[SYSTEM_STATUS_TABLE+1])			//If it has been locked by the some other process then it cannot be unlocked by this process.
+			then
+				[return_address]=-2;	
+			else
+				[SEMAPHORE_TABLE + 4*semid]=-1;
+				
+				alias i R10;
+				i=0;
+				
+				while(i<16)
+				do
+					if([PROCESS_TABLE + i*16 + 4]==WAIT_SEMAPHORE && [PROCESS_TABLE + i*16 + 5]==semid)
+					then
+						[PROCESS_TABLE + i*16 + 4]=READY;	
+					endif;
+					
+					i=i+1;
+				endwhile;
+			endif;
+		endif;
+		
+	else
+		[return_address]=-1;
+	endif;
+endif;
+
+
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//Clearing the mode bit
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];
+ireturn;
+
+
+

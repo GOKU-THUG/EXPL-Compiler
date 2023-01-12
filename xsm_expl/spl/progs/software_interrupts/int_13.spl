@@ -1,0 +1,112 @@
+// breakpoint;
+alias userSP R0;
+alias descriptor_phys_pg_no R10;
+alias descriptor_phy_address R2;
+alias system_call_val R3;
+alias return_address R5;
+
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;				//UPTR=SP
+userSP=SP;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512-1;			//SP=User Area Page
+
+descriptor_phys_pg_no=[PTBR+2*((userSP-5)/512)];				
+descriptor_phy_address=(descriptor_phys_pg_no*512) + ((userSP-5)%512);
+system_call_val=[descriptor_phy_address];
+
+return_address=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+if(system_call_val==17)							//Sem get
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=17;		//MODE BIT=17
+	
+	alias offset R15;
+	alias base_addr R14;
+		
+	base_addr=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512;
+	offset=496;
+
+
+	//CHecking if any resource is free or not
+	while(offset<=511)		
+	do
+		if([base_addr + offset]==-1)		//Resource Identifier
+		then
+			break;			
+		endif;
+						
+		offset=offset+2;
+	endwhile;
+	
+	if(offset==512)						//If offset is equal to 512,then it indicates that 8 files/semaphores are used by the process already.
+	then
+		[return_address]=-1;
+	else
+		
+		multipush(R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+			
+			R1=ACQUIRE_SEMAPHORE;					//ACQUIRE SEMAPHORE
+			R2=[SYSTEM_STATUS_TABLE+1];
+			call MOD_0;						//RESOURCE MANAGER
+		multipop(R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+			
+		if(R0==-1)
+		then
+			[return_address]=-2;				 //There are no free semaphores
+		else
+		
+			[base_addr + offset]=1;			    //Indicating that it is a semaphore
+			[base_addr + offset+1]=R0;			//Semaphore table entry index returned by the acquire semaphore function	
+			[return_address]=(offset-496)/2;
+		endif;	
+	endif;
+endif;
+
+
+
+
+
+if(system_call_val==18)							//Sem release
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=18;		//MODE BIT=18
+
+	alias semdesc R8;	
+	alias semid R11;
+	semdesc=[[PTBR+2*((userSP-4)/512)]*512 + ((userSP-4)%512)];
+
+
+	if(semdesc>=0 && semdesc<=7 && [[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc]==1)
+	then
+	
+		semid=[[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512+496+2*semdesc+1];
+	
+		multipush(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+			R1=RELEASE_SEMAPHORE;					//RELEASE SEMAPHORE
+			R2=[SYSTEM_STATUS_TABLE+1];
+			R3=semid;
+			
+			call MOD_0;						//RESOURCE MANAGER
+		multipop(R0,R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R14,R15);
+			
+			
+		//INVALIDATING THE PERPROCESS RESOURCE TABLE corresponding to the given semid;
+		alias offset R15;
+		alias base_addr R14;
+			
+		base_addr=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512;
+		offset=496;
+		
+		[base_addr + 496 + 2*semdesc]=-1;
+				
+		[return_address]=0;
+	else
+		[return_address]=-1;
+	endif;
+endif;
+
+
+				
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//Clearing the mode bit
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];
+ireturn;

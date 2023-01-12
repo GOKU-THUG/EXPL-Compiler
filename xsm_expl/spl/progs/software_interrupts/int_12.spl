@@ -1,0 +1,49 @@
+//LogOut System Call
+alias return_addr R0;
+alias userSP R1;
+alias sys_call_no R2;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;			//UPTR=SP
+userSP = SP;
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512 - 1;		//SP=USERAREA PAGE
+
+sys_call_no=[[PTBR+2*((userSP-5)/512)]*512 + (userSP-5)%512];		//sys_call_no
+return_addr=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;       //return_address
+
+if(sys_call_no==28)                                             //LOGOUT SYS CALL
+then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=28;
+
+    if([SYSTEM_STATUS_TABLE+1]!=2)
+    then
+        [return_addr]=-1;
+        [PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//MODE FLAG BIT=0;
+        SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];			//SP=UPTR
+        ireturn;
+    endif;
+    breakpoint;
+    multipush(R0,R1,R2);
+        R1=KILL_ALL;
+        R2=[SYSTEM_STATUS_TABLE+1];
+        call MOD_1;                                                 //Process Manager
+    multipop(R0,R1,R2);
+    breakpoint;
+
+    [PROCESS_TABLE + 2*16 + 4]=TERMINATED;                          //TERMINATES THE SHELL PROCESS
+
+    [[PTBR + 16]*512]=[[PTBR+8]*512 + 1];
+    [PROCESS_TABLE + 2*16 + 13]=8*512;
+  
+    [PROCESS_TABLE + 1*16 + 4]=READY;                               //LOGIN PROCESS WHICH WAS INITIALLY WAITING FOR THE SHELL PROCESS TO FINISH IS MADE READY.
+    [SYSTEM_STATUS_TABLE + 0]=0;                                    //CURRENT USER ID=0:KERNEL;
+
+   breakpoint;
+    call SCHEDULER;                                         //Scheduler Module  
+
+endif;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=0;			//MODE FLAG BIT=0;
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13];			//SP=UPTR
+
+ireturn;

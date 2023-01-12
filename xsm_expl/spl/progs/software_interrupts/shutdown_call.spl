@@ -1,0 +1,97 @@
+//breakpoint;
+
+alias userSP R0;
+alias return_address R5;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 13]=SP;
+userSP=SP;
+
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9]=21;				//Mode Bit=15;
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 11]*512-1;			//SP=User Area Page
+
+return_address=[PTBR+2*((userSP-1)/512)]*512 + (userSP-1)%512;
+
+if([SYSTEM_STATUS_TABLE+1]!=2 || [PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 3]!=1)		//If the process calling shutdown is not root user.
+then	
+	[return_address]=-1;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 9]=0;				//Mode Bit=15;
+	SP=[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE+1]*16) + 13];
+	ireturn;
+endif;
+
+
+//Invoking kill all function
+
+multipush(R0,R5);
+	R1=KILL_ALL;
+	R2=[SYSTEM_STATUS_TABLE + 1];
+	call MOD_1;
+multipop(R0,R5);
+
+
+//Copying buffer table content
+alias i R6;
+i=0;
+
+while(i<MAX_BUFFER)
+do
+	if([BUFFER_TABLE + i*4]!=-1 && [BUFFER_TABLE + i*4 + 1]==1)		//If disk block has been loaded and dirty bit is set
+	then
+		multipush(R0,R5,R6);
+			R1=DISK_STORE;
+			R2=[SYSTEM_STATUS_TABLE + 1];
+			R8=BUFFER_BASE+i;
+			R9=[BUFFER_TABLE + i*4];
+			call MOD_4;
+		multipop(R0,R5,R6);		
+	endif;
+	
+	i=i+1;
+endwhile;
+
+
+
+//Copying Inode table
+
+multipush(R0,R5);
+	R1=DISK_STORE;
+	R2=[SYSTEM_STATUS_TABLE + 1];
+	R8=59;
+	R9=3;
+	call MOD_4;									//Device Manager
+multipop(R0,R5);
+
+
+//Copying user table
+
+multipush(R0,R5);
+	R1=DISK_STORE;
+	R2=[SYSTEM_STATUS_TABLE + 1];
+	R8=60;
+	R9=4;
+	call MOD_4;									//Device Manager
+multipop(R0,R5);
+
+
+//Copying Root File
+
+multipush(R0,R5);
+	R1=DISK_STORE;
+	R2=[SYSTEM_STATUS_TABLE + 1];
+	R8=62;
+	R9=5;
+	call MOD_4;									//Device Manager
+multipop(R0,R5);
+
+//Copying Disk Free List
+
+multipush(R0,R5);
+	R1=DISK_STORE;
+	R2=[SYSTEM_STATUS_TABLE + 1];
+	R8=61;
+	R9=2;
+	call MOD_4;									//Device Manager
+multipop(R0,R5);
+
+
+halt;
