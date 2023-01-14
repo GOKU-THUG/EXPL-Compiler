@@ -1,0 +1,13 @@
+using namespace std
+
+int main
+
+    //Name:gokul
+    /*
+        MU 
+        Name
+    */
+
+    /*
+    return 0
+
