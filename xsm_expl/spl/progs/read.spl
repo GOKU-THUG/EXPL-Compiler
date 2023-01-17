@@ -4,6 +4,8 @@ alias data R5;
 
 userSP = SP;
 
+read;
+
 address = [[PTBR +  ( (userSP-3)/ 512 ) * 2] * 512 + ((userSP-3) % 512)];
 
 address=[PTBR + (address/512)*2]*512 + (address%512);
