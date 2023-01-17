@@ -1,0 +1,6 @@
+#! /bin/bash
+
+yacc -d eval.y
+lex eval.l
+gcc lex.yy.c y.tab.c -o eval.out
+./eval.out
