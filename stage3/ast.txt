@@ -1,0 +1,15 @@
+begin
+a=2;
+b=4;
+c=3;
+if (a < b) then
+    if (b < c) then Write(c); else Write(b); endif;
+endif;
+
+while(a<b)
+do
+    Write(a);
+    a=a+1;
+endwhile;
+
+end;

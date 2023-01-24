@@ -1,0 +1,16 @@
+#! /bin/bash
+
+yacc -d ast.y
+lex ast.l
+gcc lex.yy.c y.tab.c -o ast.out
+./ast.out
+
+cd linker
+
+lex label.l
+gcc lex.yy.c -o linker.out
+./linker.out
+
+cd ../../xsm_expl;
+
+./xsm -l library.lib -e ../stage3/ast.xsm
