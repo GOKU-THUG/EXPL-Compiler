@@ -109,7 +109,7 @@ struct tnode* makeComparisonNode(char c[10],struct tnode *l,struct tnode *r)
     struct tnode *temp;
     temp = (struct tnode*)malloc(sizeof(struct tnode));
 
-    temp->nonleaf = malloc(sizeof(char));
+    temp->nonleaf = malloc(strlen(c)*sizeof(char));
     strcpy(temp->nonleaf,c);
 
     temp->type=Boolean;
@@ -123,13 +123,14 @@ struct tnode* makeComparisonNode(char c[10],struct tnode *l,struct tnode *r)
 //if,while,else
 struct tnode* makeBranchingNode(char* c,struct tnode* l,struct tnode* r)
 {
-    if(l->type!=Boolean && strcmp(c,"Else")!=0)
-    {
+    if(r!=NULL && r->type!=Boolean && ( (strcmp(c,"Do")==0) || (strcmp(c,"Repeat")==0))){
+        printf("%s",r->nonleaf);
+        printf("Type mismatch:Branching\n");
+        exit(0);
+    }
+
+    else if(l!=NULL && l->type!=Boolean && strcmp(c,"Else")!=0 && (strcmp(c,"Do")!=0) && (strcmp(c,"Repeat")!=0)){
         printf("%s",l->nonleaf);
-
-        //printf("%s",l->nonleaf);
-        //printf("%s",l->nonleaf);
-
         printf("Type mismatch:Branching\n");
         exit(0);
     }
@@ -140,11 +141,31 @@ struct tnode* makeBranchingNode(char* c,struct tnode* l,struct tnode* r)
     temp->nonleaf = malloc(sizeof(char));
     strcpy(temp->nonleaf,c);
 
-    temp->type=Boolean;
+    //temp->type=Boolean;
     temp->nodetype=Branch;
     temp->left = l;
     temp->right=r;
     
+    return temp;
+}
+
+struct tnode* makeBreak_ContinueNode(char* c)
+{
+    struct tnode *temp;
+    temp = (struct tnode*)malloc(sizeof(struct tnode));
+
+    temp->nonleaf = malloc(strlen(c)*sizeof(char));
+    strcpy(temp->nonleaf,c);
+
+    if(strcmp("break",c)==0)
+        temp->nodetype=Break;
+    
+    else if(strcmp("continue",c)==0)
+        temp->nodetype=Continue;
+    
+    temp->left=NULL;
+    temp->right=NULL;
+
     return temp;
 }
 

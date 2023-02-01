@@ -72,7 +72,11 @@ extern int yydebug;
     WHILE = 273,                   /* WHILE  */
     DO = 274,                      /* DO  */
     ENDWHILE = 275,                /* ENDWHILE  */
-    COMP = 276                     /* COMP  */
+    REPEAT = 276,                  /* REPEAT  */
+    UNTIL = 277,                   /* UNTIL  */
+    BREAK = 278,                   /* BREAK  */
+    CONTINUE = 279,                /* CONTINUE  */
+    COMP = 280                     /* COMP  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -99,7 +103,11 @@ extern int yydebug;
 #define WHILE 273
 #define DO 274
 #define ENDWHILE 275
-#define COMP 276
+#define REPEAT 276
+#define UNTIL 277
+#define BREAK 278
+#define CONTINUE 279
+#define COMP 280
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -110,7 +118,7 @@ union YYSTYPE
 	struct tnode *no;
     char* c;
 
-#line 114 "y.tab.h"
+#line 122 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

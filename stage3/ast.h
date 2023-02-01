@@ -7,10 +7,12 @@
 #define Operator 5
 #define Comparison 6
 #define Branch 7
+#define Break 8 
+#define Continue 9
 
 //TYPE
-#define Boolean 0
-#define Integer 1
+#define Boolean 10
+#define Integer 11
 
 typedef struct tnode 
 { 
@@ -18,7 +20,7 @@ typedef struct tnode
     int type;           //DATAType:int,bool             	
 	char* varname;	    //name of a variable for ID nodes  
     char* nonleaf;      //stores the string such as read/write/connector/operator
-    int nodetype;       //0-constants,1-variables,2-read,3-write,4-connector,5-operators(+-/*=)
+    int nodetype;       //0-constants,1-variables,2-read,3-write,4-connector,5-operators(+-/*=),Comparison 6,Branch 7,8-BREAK,9-CONTINUE
     
 	struct tnode *left,*right;	//left and right branches   
 }tnode;
@@ -50,6 +52,8 @@ struct tnode* makeOperatorNode(char c,struct tnode *l,struct tnode *r);
 //Comparison Node
 struct tnode* makeComparisonNode(char c[10],struct tnode *l,struct tnode *r);
 
+struct tnode* makeBreak_ContinueNode(char* c);
+
 void printtree(struct tnode* t);
 
 
@@ -68,6 +72,10 @@ void callread(FILE *fptr,int resreg_no);
 void callwrite(FILE *fptr,int resreg_no);
 
 void callwhile(FILE *fptr,struct tnode* t);
+
+void calldo(FILE *fptr,struct tnode* t);
+
+void callrepeat(FILE *fptr,struct tnode* t);
 
 void callif(FILE *fptr,struct tnode* t);
 

@@ -1,5 +1,7 @@
 int freereg_no=-1;
 int freelabel=-1;
+int break_label=-1;
+int continue_label=-1;
 
 int getLabel()
 {
@@ -98,15 +100,82 @@ void callwhile(FILE *fptr,struct tnode* t)
 
 		if(t->right!=NULL)                      //If condition is satisfied
 		{	
+            break_label=label2;                //For break statements
+            continue_label=label1;             //For continue statements
+
 			int right=codeGen(t->right,fptr);
 			
-			if(right!=-1)
+            break_label=-1;
+            continue_label=-1;
+			
+            if(right!=-1)
 				freeReg();
 		}
 	fprintf(fptr,"JMP L%d\n",label1);
 	fprintf(fptr,"L%d:\n",label2);
 	
 }
+
+void calldo(FILE *fptr,struct tnode* t)
+{
+    int label1=getLabel();
+	int label2=getLabel();
+
+    fprintf(fptr,"L%d:\n",label1);
+
+    if(t->left!=NULL)
+    {
+        break_label=label2;                //For break statements
+        continue_label=label1;             //For continue statements
+        
+        int left=codeGen(t->left,fptr);
+    
+        break_label=-1;
+        continue_label=-1;
+			
+        if(left!=-1)
+		    freeReg();
+    }
+
+		int result_reg=codeGen(t->right,fptr);   //Will return the no of the register containing the boolean result
+		freeReg();
+
+		fprintf(fptr,"JNZ R%d,L%d\n",result_reg,label1);        //If condition satisfied
+
+	    fprintf(fptr,"L%d:\n",label2);
+}
+
+void callrepeat(FILE *fptr,struct tnode* t)
+{
+    int label1=getLabel();
+	int label2=getLabel();
+
+    fprintf(fptr,"L%d:\n",label1);
+
+    if(t->left!=NULL)
+    {
+        break_label=label2;                //For break statements
+        continue_label=label1;             //For continue statements
+        
+        int left=codeGen(t->left,fptr);
+    
+        break_label=-1;
+        continue_label=-1;
+			
+        if(left!=-1)
+		    freeReg();
+    }
+
+		int result_reg=codeGen(t->right,fptr);   //Will return the no of the register containing the boolean result
+		
+		fprintf(fptr,"JZ R%d,L%d\n",result_reg,label1);        //If condition satisfied
+		
+		freeReg();
+
+	fprintf(fptr,"L%d:\n",label2);
+}
+
+
 
 void callif(FILE *fptr,struct tnode* t)
 {
@@ -196,6 +265,7 @@ void callcomp(FILE* fptr,char c[10],int leftreg,int rightreg)
 		fprintf(fptr,"NE R%d,R%d\n",leftreg,rightreg);
 }
 
+
 int codeGen(struct tnode* t,FILE* fptr)
 {
 	if(t->left==NULL && t->right==NULL)
@@ -207,43 +277,58 @@ int codeGen(struct tnode* t,FILE* fptr)
 		  return p;
 		}
 
-		else                        //Variable
-		{
+		else if(t->nodetype==Variable)                              //Variable
+        {                       
 			int p=getReg();
 			int addr=address(*(t->varname));
 
-			fprintf(fptr,"MOV R%d,%d\n",p,addr); //Moving the address to a register
+			fprintf(fptr,"MOV R%d,%d\n",p,addr);                    //Moving the address to a register
 			return p;
 		}
+
+        else if(t->nodetype==Break && break_label!=-1)              //Only to consider breaks inside loops              
+                fprintf(fptr,"JMP L%d\n",break_label);
+
+        else if(t->nodetype==Continue && continue_label!=-1)        //Only to consider continue inside loops
+            fprintf(fptr,"JMP L%d\n",continue_label);
+
+        return -1;
 	}
 
-	if(t->nodetype==Branch)
-	{
-		if(strcmp(t->nonleaf,"While")==0){
+	if(t->nodetype==Branch){
+		
+        if(strcmp(t->nonleaf,"While")==0){
 			callwhile(fptr,t);
 			return -1;
 		}
 
-		if(strcmp(t->nonleaf,"If")==0)
-		{
+        if(strcmp(t->nonleaf,"Do")==0){
+			calldo(fptr,t);
+			return -1;
+		}
+
+        if(strcmp(t->nonleaf,"Repeat")==0){
+			callrepeat(fptr,t);
+			return -1;
+		}
+
+		if(strcmp(t->nonleaf,"If")==0){
 			if(t->right!=NULL 
 			&& t->right->nodetype==Connector 
 			&& t->right->right!=NULL 
 			&& t->right->right->nodetype==Branch
-			&& strcmp(t->right->right->nonleaf,"Else")==0){
-				
+			&& strcmp(t->right->right->nonleaf,"Else")==0){	
 				callifelse(fptr,t);
 				return -1;
 			}			
-			
 			callif(fptr,t);
 			return -1;
 		}
 	}
 
-	else
-	{
-		int left=codeGen(t->left,fptr);
+	else{
+		
+        int left=codeGen(t->left,fptr);
 	
 		if(t->nodetype==Read)          //read
 		{
@@ -300,7 +385,7 @@ int codeGen(struct tnode* t,FILE* fptr)
 				fprintf(fptr,"MOV [R%d],R%d\n",left,right);
                 
                 freeReg();  //free left
-                freeReg();  //frees right
+                freeReg();  //free right
                 
                 return -1;
             }

@@ -2,14 +2,40 @@ begin
 a=2;
 b=4;
 c=3;
+
 if (a < b) then
+    break;
     if (b < c) then Write(c); else Write(b); endif;
 endif;
 
-while(a<b)
+d=5;
+e=6;
+
 do
+    Write(d);
+    d=d+1;
+while(d>6)
+
+s=0;
+
+repeat
+    read(i);
+    s=s+i;
+until (i==0)
+
+Write(s);
+
+while(a<=b+1)
+do
+
+    if(a==b)
+    then
+        break;
+    endif;
+
     Write(a);
     a=a+1;
 endwhile;
 
+Write(a);
 end;

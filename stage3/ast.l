@@ -28,9 +28,17 @@
 
 "endif" {return ENDIF;}
 
+"do"  {return DO;}
+
 "while" {return WHILE;}
 
-"do"  {return DO;}
+"repeat" {return REPEAT;}
+
+"until" {return UNTIL;}
+
+"break" {return BREAK;}
+
+"continue" {return CONTINUE;}
 
 "endwhile"  {return ENDWHILE;}
 
