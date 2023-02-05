@@ -1,0 +1,33 @@
+decl
+    int a[2][3],i,j;
+enddecl
+
+begin
+    i=0;
+
+    while(i<2)
+    do
+    j=0;
+        while(j<3)
+        do
+            read(a[i][j]);
+            j=j+1;
+        endwhile;
+        i=i+1;
+    endwhile;
+
+    i=0;
+
+    while(i<2)
+    do
+    j=0;
+        while(j<3)
+        do
+            write(a[i][j]);
+            j=j+1;
+        endwhile;
+        i=i+1;
+    endwhile;
+
+    
+end
