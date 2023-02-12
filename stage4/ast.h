@@ -22,6 +22,9 @@ typedef union Val
     char* c;
 }Val;
 
+int push(char c,int label);
+int pop(char c);
+
 //Tnode
 typedef struct tnode 
 { 

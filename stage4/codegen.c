@@ -3,6 +3,47 @@ int freelabel = -1;
 int break_label = -1;
 int continue_label = -1;
 
+int bstack[100];
+int cstack[100];
+
+int btop=-1;
+int ctop=-1;
+
+int push(char c,int label)
+{   
+    if(c=='b')
+    {
+        btop+=1;
+        bstack[btop]=label;
+    }
+
+    else if(c=='c')
+    {
+        ctop+=1;
+        cstack[ctop]=label;
+    }
+}
+
+
+int pop(char c)
+{   
+    if(c=='b')
+    {   if(btop==-1)
+            printf("BSTACK EMPTY ALREADY\n");
+       
+        btop-=1;
+    }
+
+    else if(c=='c')
+    {
+        if(ctop==-1)
+           printf("CSTACK EMPTY ALREADY\n");
+        
+        ctop-=1;
+    }   
+    
+}
+
 int getLabel()
 {
     freelabel++;
@@ -83,6 +124,7 @@ void callread(FILE *fptr, int resreg_no)
     fprintf(fptr, "POP R1\n");
 }
 
+
 void callwhile(FILE *fptr, struct tnode *t)
 {
     int label1 = getLabel();
@@ -98,13 +140,13 @@ void callwhile(FILE *fptr, struct tnode *t)
 
     if (t->right != NULL) // If condition is satisfied
     {
-        break_label = label2;    // For break statements
-        continue_label = label1; // For continue statements
+        push('b',label2);    // For break statements
+        push('c',label1); // For continue statements
 
         int right = codeGen(t->right, fptr);
 
-        break_label = -1;
-        continue_label = -1;
+        pop('b');
+        pop('c');
 
         if (right != -1)
             freeReg();
@@ -122,13 +164,13 @@ void calldo(FILE *fptr, struct tnode *t)
 
     if (t->left != NULL)
     {
-        break_label = label2;    // For break statements
-        continue_label = label1; // For continue statements
+        push('b',label2);    // For break statements
+        push('c',label1); // For continue statements
 
         int left = codeGen(t->left, fptr);
 
-        break_label = -1;
-        continue_label = -1;
+        pop('b');
+        pop('c');
 
         if (left != -1)
             freeReg();
@@ -151,13 +193,13 @@ void callrepeat(FILE *fptr, struct tnode *t)
 
     if (t->left != NULL)
     {
-        break_label = label2;    // For break statements
-        continue_label = label1; // For continue statements
+        push('b',label2);    // For break statements
+        push('c',label1); // For continue statements
 
         int left = codeGen(t->left, fptr);
 
-        break_label = -1;
-        continue_label = -1;
+        pop('b');
+        pop('c');
 
         if (left != -1)
             freeReg();
@@ -280,15 +322,15 @@ int codeGen(struct tnode *t, FILE *fptr)
         return p;
     }
 
-    else if (t->nodetype == Break && break_label != -1) // Only to consider breaks inside loops
+    else if (t->nodetype == Break && btop!=-1) // Only to consider breaks inside loops
     {
-        fprintf(fptr, "JMP L%d\n", break_label);
+        fprintf(fptr, "JMP L%d\n",bstack[btop]);
         return -1;
     }
 
-    else if (t->nodetype == Continue && continue_label != -1) // Only to consider continue inside loops
+    else if (t->nodetype == Continue && ctop!=-1) // Only to consider continue inside loops
     {
-        fprintf(fptr, "JMP L%d\n", continue_label);
+        fprintf(fptr, "JMP L%d\n", cstack[ctop]);
         return -1;
     }
 
@@ -304,8 +346,8 @@ int codeGen(struct tnode *t, FILE *fptr)
             int rowsize = t->Gentry->row;
             int colsize = t->Gentry->col;
 
-            // int rowidx = evaluate(t->left);
-            // int colidx = evaluate(t->right);
+            // int rowidx = coegen(t->left); register
+            // int colidx = codegen(t->right) register;
 
             // Rowidx
             // if(t->left->nodetype==Constant | t->left->nodetype==Operator)

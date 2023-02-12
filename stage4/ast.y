@@ -56,8 +56,9 @@ Program : BEG Slist END {
           | Declarations BEG Slist END   {
                                             $$=$<no>3;
                                             
-                                            //printtree($<no>2);
                                             printsymboltable();
+                                            //printtree($<no>2);
+                                            
 
                                             FILE *fptr=fopen("ast.o","w");
                                             fprintf(fptr, "%d\n%d\n%d\n%d\n%d\n%d\n%d\n%d\nBRKP\n",0,2056,0,0,0,0,0,0);
@@ -121,7 +122,8 @@ Ifstmt  : IF '(' E ')' Then Slist Else Slist ENDIF {
         | IF '(' E ')' Then Slist ENDIF       {$$=makeBranchingNode("If",$<no>3,$<no>6);}
         ;
 
-Whilestmt : WHILE '(' E ')' DO Slist ENDWHILE    {$$=makeBranchingNode("While",$<no>3,$<no>6);};
+Whilestmt : WHILE '(' E ')' DO Slist ENDWHILE    { 
+                                                    $$=makeBranchingNode("While",$<no>3,$<no>6);};
 
 Dowhilestmt: DO Slist WHILE '(' E ')'           {$$=makeBranchingNode("Do",$<no>2,$<no>5);};
 
@@ -212,7 +214,6 @@ E : E PLUS E		{$$ = makeOperatorNode('+',$<no>1,$<no>3);}
 
      | STRING       {$$= makeConstantNode(-1,$<c>1);}
 
-                
 	 | E COMP E {$$ = makeComparisonNode($<c>2,$<no>1,$<no>3);}
      ;
 

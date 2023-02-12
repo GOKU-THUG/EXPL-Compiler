@@ -671,12 +671,12 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    39,    39,    56,    73,    74,    76,    76,    78,    78,
-      80,    82,    83,    85,    86,    87,    88,    89,    90,    92,
-      93,    95,    96,    97,    98,    99,   100,   101,   102,   107,
-     113,   121,   124,   126,   128,   130,   134,   143,   154,   156,
-     161,   169,   179,   181,   183,   185,   187,   189,   192,   200,
-     210,   211,   213,   216
+       0,    39,    39,    56,    74,    75,    77,    77,    79,    79,
+      81,    83,    84,    86,    87,    88,    89,    90,    91,    93,
+      94,    96,    97,    98,    99,   100,   101,   102,   103,   108,
+     114,   122,   125,   128,   130,   132,   136,   145,   156,   158,
+     163,   171,   181,   183,   185,   187,   189,   191,   194,   202,
+     212,   213,   215,   218
 };
 #endif
 
@@ -1391,8 +1391,9 @@ yyreduce:
                                          {
                                             (yyval.no)=(yyvsp[-1].no);
                                             
-                                            //printtree($<no>2);
                                             printsymboltable();
+                                            //printtree($<no>2);
+                                            
 
                                             FILE *fptr=fopen("ast.o","w");
                                             fprintf(fptr, "%d\n%d\n%d\n%d\n%d\n%d\n%d\n%d\nBRKP\n",0,2056,0,0,0,0,0,0);
@@ -1405,149 +1406,149 @@ yyreduce:
                                             fprintf(fptr,"INT 10");
                                             exit(1);
                                         }
-#line 1409 "y.tab.c"
+#line 1410 "y.tab.c"
     break;
 
   case 4: /* Program: Declarations BEG END  */
-#line 73 "ast.y"
+#line 74 "ast.y"
                                  {exit(1);}
-#line 1415 "y.tab.c"
+#line 1416 "y.tab.c"
     break;
 
   case 5: /* Program: BEG END  */
-#line 74 "ast.y"
+#line 75 "ast.y"
                     {exit(1);}
-#line 1421 "y.tab.c"
+#line 1422 "y.tab.c"
     break;
 
   case 10: /* Decl: Type VarList  */
-#line 80 "ast.y"
+#line 81 "ast.y"
                     {addtype((yyvsp[-1].i));}
-#line 1427 "y.tab.c"
+#line 1428 "y.tab.c"
     break;
 
   case 11: /* Type: INT  */
-#line 82 "ast.y"
+#line 83 "ast.y"
               {(yyval.i)=Integer;}
-#line 1433 "y.tab.c"
+#line 1434 "y.tab.c"
     break;
 
   case 12: /* Type: STR  */
-#line 83 "ast.y"
+#line 84 "ast.y"
               {(yyval.i)=String;}
-#line 1439 "y.tab.c"
+#line 1440 "y.tab.c"
     break;
 
   case 13: /* VarList: VarList ',' ID '[' NUM ']'  */
-#line 85 "ast.y"
+#line 86 "ast.y"
                                         { Install((yyvsp[-3].c),-1,(yyvsp[-1].i),-1,-1);}
-#line 1445 "y.tab.c"
+#line 1446 "y.tab.c"
     break;
 
   case 14: /* VarList: VarList ',' ID '[' NUM ']' '[' NUM ']'  */
-#line 86 "ast.y"
+#line 87 "ast.y"
                                                     { Install((yyvsp[-6].c),-1,(yyvsp[-4].i)*(yyvsp[-1].i),(yyvsp[-4].i),(yyvsp[-1].i));}
-#line 1451 "y.tab.c"
+#line 1452 "y.tab.c"
     break;
 
   case 15: /* VarList: VarList ',' ID  */
-#line 87 "ast.y"
+#line 88 "ast.y"
                                         {Install((yyvsp[0].c),-1,1,-1,-1);}
-#line 1457 "y.tab.c"
+#line 1458 "y.tab.c"
     break;
 
   case 16: /* VarList: ID '[' NUM ']'  */
-#line 88 "ast.y"
+#line 89 "ast.y"
                                         { Install((yyvsp[-3].c),-1,(yyvsp[-1].i),-1,-1);}
-#line 1463 "y.tab.c"
+#line 1464 "y.tab.c"
     break;
 
   case 17: /* VarList: ID '[' NUM ']' '[' NUM ']'  */
-#line 89 "ast.y"
+#line 90 "ast.y"
                                          { Install((yyvsp[-6].c),-1,(yyvsp[-4].i)*(yyvsp[-1].i),(yyvsp[-4].i),(yyvsp[-1].i));}
-#line 1469 "y.tab.c"
+#line 1470 "y.tab.c"
     break;
 
   case 18: /* VarList: ID  */
-#line 90 "ast.y"
+#line 91 "ast.y"
                                         {Install((yyvsp[0].c),-1,1,-1,-1);}
-#line 1475 "y.tab.c"
+#line 1476 "y.tab.c"
     break;
 
   case 19: /* Slist: Slist Stmt  */
-#line 92 "ast.y"
+#line 93 "ast.y"
                    {(yyval.no)=makeConnectorNode('.',(yyvsp[-1].no),(yyvsp[0].no));}
-#line 1481 "y.tab.c"
+#line 1482 "y.tab.c"
     break;
 
   case 20: /* Slist: Stmt  */
-#line 93 "ast.y"
+#line 94 "ast.y"
                    {(yyval.no)=(yyvsp[0].no);}
-#line 1487 "y.tab.c"
+#line 1488 "y.tab.c"
     break;
 
   case 21: /* Stmt: InputStmt  */
-#line 95 "ast.y"
+#line 96 "ast.y"
                   {(yyval.no)=(yyvsp[0].no);}
-#line 1493 "y.tab.c"
+#line 1494 "y.tab.c"
     break;
 
   case 22: /* Stmt: OutputStmt  */
-#line 96 "ast.y"
+#line 97 "ast.y"
                     {(yyval.no)=(yyvsp[0].no);}
-#line 1499 "y.tab.c"
+#line 1500 "y.tab.c"
     break;
 
   case 23: /* Stmt: AsgStmt  */
-#line 97 "ast.y"
+#line 98 "ast.y"
                    {(yyval.no)=(yyvsp[0].no);}
-#line 1505 "y.tab.c"
+#line 1506 "y.tab.c"
     break;
 
   case 24: /* Stmt: Ifstmt  */
-#line 98 "ast.y"
+#line 99 "ast.y"
                   {(yyval.no)=(yyvsp[0].no);}
-#line 1511 "y.tab.c"
+#line 1512 "y.tab.c"
     break;
 
   case 25: /* Stmt: Whilestmt  */
-#line 99 "ast.y"
+#line 100 "ast.y"
                      {(yyval.no)=(yyvsp[0].no);}
-#line 1517 "y.tab.c"
+#line 1518 "y.tab.c"
     break;
 
   case 26: /* Stmt: Dowhilestmt  */
-#line 100 "ast.y"
+#line 101 "ast.y"
                      {(yyval.no)=(yyvsp[0].no);}
-#line 1523 "y.tab.c"
+#line 1524 "y.tab.c"
     break;
 
   case 27: /* Stmt: Repeatuntil  */
-#line 101 "ast.y"
+#line 102 "ast.y"
                      {(yyval.no)=(yyvsp[0].no);}
-#line 1529 "y.tab.c"
+#line 1530 "y.tab.c"
     break;
 
   case 28: /* Stmt: BREAK  */
-#line 102 "ast.y"
+#line 103 "ast.y"
                     {
                         char c[6]="break";
                         (yyval.no)=makeBreak_ContinueNode(c);
                     }
-#line 1538 "y.tab.c"
+#line 1539 "y.tab.c"
     break;
 
   case 29: /* Stmt: CONTINUE  */
-#line 107 "ast.y"
+#line 108 "ast.y"
                     {
                         char c[9]="continue";
                         (yyval.no)=makeBreak_ContinueNode(c);
                     }
-#line 1547 "y.tab.c"
+#line 1548 "y.tab.c"
     break;
 
   case 30: /* Ifstmt: IF '(' E ')' Then Slist Else Slist ENDIF  */
-#line 113 "ast.y"
+#line 114 "ast.y"
                                                    {
                                                         struct tnode* else_node;
                                                         struct tnode* connector_node;
@@ -1556,43 +1557,44 @@ yyreduce:
                                                         connector_node=makeConnectorNode('.',(yyvsp[-3].no),else_node);
                                                         (yyval.no)=makeBranchingNode("If",(yyvsp[-6].no),connector_node);              
                                                    }
-#line 1560 "y.tab.c"
+#line 1561 "y.tab.c"
     break;
 
   case 31: /* Ifstmt: IF '(' E ')' Then Slist ENDIF  */
-#line 121 "ast.y"
+#line 122 "ast.y"
                                               {(yyval.no)=makeBranchingNode("If",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1566 "y.tab.c"
+#line 1567 "y.tab.c"
     break;
 
   case 32: /* Whilestmt: WHILE '(' E ')' DO Slist ENDWHILE  */
-#line 124 "ast.y"
-                                                 {(yyval.no)=makeBranchingNode("While",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1572 "y.tab.c"
+#line 125 "ast.y"
+                                                 { 
+                                                    (yyval.no)=makeBranchingNode("While",(yyvsp[-4].no),(yyvsp[-1].no));}
+#line 1574 "y.tab.c"
     break;
 
   case 33: /* Dowhilestmt: DO Slist WHILE '(' E ')'  */
-#line 126 "ast.y"
+#line 128 "ast.y"
                                                 {(yyval.no)=makeBranchingNode("Do",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1578 "y.tab.c"
+#line 1580 "y.tab.c"
     break;
 
   case 34: /* Repeatuntil: REPEAT Slist UNTIL '(' E ')'  */
-#line 128 "ast.y"
+#line 130 "ast.y"
                                                 {(yyval.no)=makeBranchingNode("Repeat",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1584 "y.tab.c"
+#line 1586 "y.tab.c"
     break;
 
   case 35: /* InputStmt: READ '(' ID ')'  */
-#line 130 "ast.y"
+#line 132 "ast.y"
                              {
                                 struct tnode* var=makeVariableNode((yyvsp[-1].c));
                                 (yyval.no)=makereadnode(var);}
-#line 1592 "y.tab.c"
+#line 1594 "y.tab.c"
     break;
 
   case 36: /* InputStmt: READ '(' ID '[' E ']' ')'  */
-#line 135 "ast.y"
+#line 137 "ast.y"
                             {
                                 struct tnode* var=makeVariableNode((yyvsp[-4].c));
                                 indextypecheck((yyvsp[-2].no)->type);
@@ -1600,11 +1602,11 @@ yyreduce:
                            
                                 (yyval.no)=makereadnode(var);
                             }
-#line 1604 "y.tab.c"
+#line 1606 "y.tab.c"
     break;
 
   case 37: /* InputStmt: READ '(' ID '[' E ']' '[' E ']' ')'  */
-#line 144 "ast.y"
+#line 146 "ast.y"
                             {
                                 struct tnode* var=makeVariableNode((yyvsp[-7].c));
                                 indextypecheck((yyvsp[-5].no)->type);
@@ -1614,37 +1616,37 @@ yyreduce:
                                 
                                 (yyval.no)=makereadnode(var);
                             }
-#line 1618 "y.tab.c"
+#line 1620 "y.tab.c"
     break;
 
   case 38: /* OutputStmt: WRITE '(' E ')'  */
-#line 154 "ast.y"
+#line 156 "ast.y"
                              {(yyval.no)=makewritenode((yyvsp[-1].no));}
-#line 1624 "y.tab.c"
+#line 1626 "y.tab.c"
     break;
 
   case 39: /* AsgStmt: ID EQUAL E  */
-#line 156 "ast.y"
+#line 158 "ast.y"
                     {   
                         struct tnode* var=makeVariableNode((yyvsp[-2].c));
                         (yyval.no) = makeOperatorNode('=',var,(yyvsp[0].no));
                     }
-#line 1633 "y.tab.c"
+#line 1635 "y.tab.c"
     break;
 
   case 40: /* AsgStmt: ID '[' E ']' EQUAL E  */
-#line 162 "ast.y"
+#line 164 "ast.y"
                                {
                                     struct tnode* var=makeVariableNode((yyvsp[-5].c));
                                     indextypecheck((yyvsp[-3].no)->type);
                                     var->left=(yyvsp[-3].no);
                                     (yyval.no) = makeOperatorNode('=',var,(yyvsp[0].no));
                                }
-#line 1644 "y.tab.c"
+#line 1646 "y.tab.c"
     break;
 
   case 41: /* AsgStmt: ID '[' E ']' '[' E ']' EQUAL E  */
-#line 170 "ast.y"
+#line 172 "ast.y"
                                         { 
                                             struct tnode* var=makeVariableNode((yyvsp[-8].c));
                                             indextypecheck((yyvsp[-6].no)->type);
@@ -1653,58 +1655,58 @@ yyreduce:
                                             var->right=(yyvsp[-3].no);  //Column
                                             (yyval.no)=makeOperatorNode('=',var,(yyvsp[0].no));
                                         }
-#line 1657 "y.tab.c"
+#line 1659 "y.tab.c"
     break;
 
   case 42: /* E: E PLUS E  */
-#line 179 "ast.y"
+#line 181 "ast.y"
                         {(yyval.no) = makeOperatorNode('+',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1663 "y.tab.c"
+#line 1665 "y.tab.c"
     break;
 
   case 43: /* E: E MINUS E  */
-#line 181 "ast.y"
+#line 183 "ast.y"
                         {(yyval.no) = makeOperatorNode('-',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1669 "y.tab.c"
+#line 1671 "y.tab.c"
     break;
 
   case 44: /* E: E MUL E  */
-#line 183 "ast.y"
+#line 185 "ast.y"
                         {(yyval.no) = makeOperatorNode('*',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1675 "y.tab.c"
+#line 1677 "y.tab.c"
     break;
 
   case 45: /* E: E DIV E  */
-#line 185 "ast.y"
+#line 187 "ast.y"
                         {(yyval.no) = makeOperatorNode('/',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1681 "y.tab.c"
+#line 1683 "y.tab.c"
     break;
 
   case 46: /* E: E MOD E  */
-#line 187 "ast.y"
+#line 189 "ast.y"
                         {(yyval.no) = makeOperatorNode('%',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1687 "y.tab.c"
+#line 1689 "y.tab.c"
     break;
 
   case 47: /* E: '(' E ')'  */
-#line 189 "ast.y"
+#line 191 "ast.y"
                                 {(yyval.no) = (yyvsp[-1].no);}
-#line 1693 "y.tab.c"
+#line 1695 "y.tab.c"
     break;
 
   case 48: /* E: ID '[' E ']'  */
-#line 193 "ast.y"
+#line 195 "ast.y"
                     { 
                         struct tnode* var=makeVariableNode((yyvsp[-3].c));
                         indextypecheck((yyvsp[-1].no)->type);
                         var->left=(yyvsp[-1].no);
                         (yyval.no)=var;
                     }
-#line 1704 "y.tab.c"
+#line 1706 "y.tab.c"
     break;
 
   case 49: /* E: ID '[' E ']' '[' E ']'  */
-#line 201 "ast.y"
+#line 203 "ast.y"
                                 { 
                                    struct tnode* var=makeVariableNode((yyvsp[-6].c));
                                    indextypecheck((yyvsp[-4].no)->type);
@@ -1714,35 +1716,35 @@ yyreduce:
                                     
                                    (yyval.no)=var;
                                 }
-#line 1718 "y.tab.c"
+#line 1720 "y.tab.c"
     break;
 
   case 50: /* E: NUM  */
-#line 210 "ast.y"
+#line 212 "ast.y"
                                 {(yyval.no) = makeConstantNode((yyvsp[0].i),NULL);}
-#line 1724 "y.tab.c"
+#line 1726 "y.tab.c"
     break;
 
   case 51: /* E: ID  */
-#line 211 "ast.y"
+#line 213 "ast.y"
                     {(yyval.no)=makeVariableNode((yyvsp[0].c));}
-#line 1730 "y.tab.c"
+#line 1732 "y.tab.c"
     break;
 
   case 52: /* E: STRING  */
-#line 213 "ast.y"
+#line 215 "ast.y"
                     {(yyval.no)= makeConstantNode(-1,(yyvsp[0].c));}
-#line 1736 "y.tab.c"
+#line 1738 "y.tab.c"
     break;
 
   case 53: /* E: E COMP E  */
-#line 216 "ast.y"
+#line 218 "ast.y"
                     {(yyval.no) = makeComparisonNode((yyvsp[-1].c),(yyvsp[-2].no),(yyvsp[0].no));}
-#line 1742 "y.tab.c"
+#line 1744 "y.tab.c"
     break;
 
 
-#line 1746 "y.tab.c"
+#line 1748 "y.tab.c"
 
       default: break;
     }
@@ -1935,7 +1937,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 219 "ast.y"
+#line 221 "ast.y"
 
 
 int yyerror(char const *s)

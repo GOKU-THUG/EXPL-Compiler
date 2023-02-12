@@ -217,11 +217,13 @@ void printtree(struct tnode *t)
             if (t->type == String)
                 printf("%s\n", (t->val).c);
         }
+
     }
 
     else
     {
-        printtree(t->left);
+        if(t->left!=NULL)
+            printtree(t->left);
 
         if (t->nodetype == Read) // read
         {
