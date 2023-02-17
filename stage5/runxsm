@@ -1,0 +1,5 @@
+#! /bin/bash
+
+cd ../xsm_expl;
+
+./xsm -l library.lib -e ../stage5/ast.xsm

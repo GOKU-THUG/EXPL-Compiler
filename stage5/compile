@@ -1,0 +1,12 @@
+#! /bin/bash
+
+lex ast.l
+yacc -d ast.y
+gcc lex.yy.c y.tab.c -o ast.out
+./ast.out
+
+cd linker
+
+lex label.l
+gcc lex.yy.c -o linker.out
+./linker.out
