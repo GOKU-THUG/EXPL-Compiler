@@ -1,0 +1,12 @@
+#! /bin/bash
+
+lex lex.l
+yacc -d parse.y
+gcc lex.yy.c y.tab.c -o generatexsm.out
+./generatexsm.out
+
+cd linker
+
+lex label.l
+gcc lex.yy.c -o linker.out
+./linker.out
