@@ -445,7 +445,7 @@ void callcomp(FILE *fptr, char c[10], int leftreg, int rightreg)
         fprintf(fptr, "NE R%d,R%d\n", leftreg, rightreg);
 }
 
-void funccode(FILE *fptr, struct tnode *body, struct tnode *returnexpr,char* functype)
+void funccode(FILE *fptr, struct tnode *body, struct tnode *returnexpr,char* functype,int ismain)
 {
     // PUSH BP AND LOCAL VARIABLES
     int localvar = get_numlocalvar();
@@ -460,7 +460,11 @@ void funccode(FILE *fptr, struct tnode *body, struct tnode *returnexpr,char* fun
     if (reg != -1)
         printf("Function registers not freed\n");
     ////////////////////////////////////////////
-    callret(fptr, returnexpr, functype); // Return Statement:POPS LOCAL VAR,FINDS RETURN VAL AND STORES IT ,POP BP,RET
+    if(ismain==-1)
+        callret(fptr, returnexpr, functype); // Return Statement:POPS LOCAL VAR,FINDS RETURN VAL AND STORES IT ,POP BP,RET
+
+    else
+        fprintf(fptr,"INT 10\n");
 }
 
 void callret(FILE *fptr, struct tnode *returnexpr, char* functype)

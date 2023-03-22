@@ -504,8 +504,14 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}'
 																fprintf(fptr,"INT 10\n");
 															}
 															fprintf(fptr,"F0:\n");
+                                                            if(CHEAD!=NULL)
+                                                            {
+                                                                printf("USED SPACE:%d\n",used_space);
+                                                                fprintf(fptr,"MOV SP,%d\n",4095+used_space);
+																fprintf(fptr,"MOV BP,SP\n"); 
+                                                            }
 															//Function code generation
-															funccode(fptr,$7->left,$7->right,$<c>1);
+															funccode(fptr,$7->left,$7->right,$<c>1,1);
 															//After function code generation
 															LClear($<c>2);//to clear the symbol table
 															Freeast($<no>7->left);//Clear the function body ast
@@ -527,8 +533,15 @@ MainBlock : INT MAIN '(' ')' '{' LdeclBlock Body '}'
 																fprintf(fptr,"INT 10\n");
 															}
 															fprintf(fptr,"F0:\n");
+                                                            if(CHEAD!=NULL)
+                                                            {
+                                                                printf("USED SPACE:%d\n",used_space);
+                                                                fprintf(fptr,"MOV SP,%d\n",4095+used_space);
+																fprintf(fptr,"MOV BP,SP\n");  
+                                                            }
+                                                             
 															//Function code generation
-															funccode(fptr,$<no>6->left,$<no>6->right,$<c>1);
+															funccode(fptr,$<no>6->left,$<no>6->right,$<c>1,1);
 															//After function code generation
 															LClear($<c>2);//to clear the symbol table
 															Freeast($<no>6->left);//Clear the function body ast
@@ -583,7 +596,7 @@ FDefBlock : Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  {
 
                                                                             ////////////////////////////////////////////
 																			//Function code generation
-																			funccode(fptr,$<no>8->left,$<no>8->right,$<c>1);
+																			funccode(fptr,$<no>8->left,$<no>8->right,$<c>1,-1);
 																			////////////////////////////////////////////
 																			//After function code generation
 																			LClear($<c>2);//to clear the symbol table
@@ -646,7 +659,7 @@ FDefBlock : Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  {
                                                                             
 																			////////////////////////////////////////////
 																			//Function code generation
-																			funccode(fptr,$<no>7->left,$<no>7->right,$<c>1);
+																			funccode(fptr,$<no>7->left,$<no>7->right,$<c>1,-1);
 																			////////////////////////////////////////////
 																			//After function code generation
 																			LClear($<c>2);//to clear the symbol table
@@ -704,6 +717,10 @@ IdList : IdList ',' ID                        {LInstall($<c>3,NULL,NULL,NULL);}
 //FUNCTION BODY
 
 Body   : BEG Slistblock Retstmt END                 {
+
+                                                if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
+                                                    LInstall("self",NULL,NULL,Cptr);
+                                               
                                                 $$=makeConnectorNode('.',$<no>2,$<no>3);
 												//printtree($<no>2);
 												addlbinding();

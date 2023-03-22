@@ -148,7 +148,7 @@ digit  [0-9]
                                     return ID;
                                 }
 
-["].*["] {
+\"((\\\")|[^"])*\" {
                 yylval.c = strdup(yytext);
                 return STRING;
         }

@@ -75,7 +75,7 @@ void addgtype(char* type)
 
     while (temp != NULL)
     {
-        if (temp->type == NULL)
+        if (temp->type == NULL && temp->ctype==NULL)
         {
             //To check in the typetable
             temp->type = TLookup(type);

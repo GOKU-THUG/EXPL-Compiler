@@ -800,9 +800,9 @@ static const yytype_int16 yyrline[] =
      281,   285,   290,   294,   297,   303,   321,   336,   354,   373,
      404,   434,   435,   436,   437,   438,   439,   440,   444,   450,
      451,   452,   453,   454,   455,   456,   457,   458,   461,   471,
-     472,   474,   475,   477,   490,   493,   516,   541,   542,   544,
-     606,   672,   673,   675,   676,   677,   690,   691,   692,   693,
-     694,   696,   697,   706,   712
+     472,   474,   475,   477,   490,   493,   522,   554,   555,   557,
+     619,   685,   686,   688,   689,   690,   703,   704,   705,   706,
+     707,   709,   710,   719,   729
 };
 #endif
 
@@ -2464,8 +2464,14 @@ yyreduce:
 																fprintf(fptr,"INT 10\n");
 															}
 															fprintf(fptr,"F0:\n");
+                                                            if(CHEAD!=NULL)
+                                                            {
+                                                                printf("USED SPACE:%d\n",used_space);
+                                                                fprintf(fptr,"MOV SP,%d\n",4095+used_space);
+																fprintf(fptr,"MOV BP,SP\n"); 
+                                                            }
 															//Function code generation
-															funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-7].c));
+															funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-7].c),1);
 															//After function code generation
 															LClear((yyvsp[-6].c));//to clear the symbol table
 															Freeast((yyvsp[-1].no)->left);//Clear the function body ast
@@ -2473,11 +2479,11 @@ yyreduce:
 															Freeast((yyvsp[-1].no)->right);//Clear the return expr ast
 															freereg_no=-1;
 														}
-#line 2477 "y.tab.c"
+#line 2483 "y.tab.c"
     break;
 
   case 116: /* MainBlock: INT MAIN '(' ')' '{' Body '}'  */
-#line 517 "parse.y"
+#line 523 "parse.y"
                                                                                                                 {
 															if(flag==0) //NO GDECL BLOCK and function definition
 															{
@@ -2491,19 +2497,26 @@ yyreduce:
 																fprintf(fptr,"INT 10\n");
 															}
 															fprintf(fptr,"F0:\n");
+                                                            if(CHEAD!=NULL)
+                                                            {
+                                                                printf("USED SPACE:%d\n",used_space);
+                                                                fprintf(fptr,"MOV SP,%d\n",4095+used_space);
+																fprintf(fptr,"MOV BP,SP\n");  
+                                                            }
+                                                             
 															//Function code generation
-															funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-6].c));
+															funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-6].c),1);
 															//After function code generation
 															LClear((yyvsp[-5].c));//to clear the symbol table
 															Freeast((yyvsp[-1].no)->left);//Clear the function body ast
 															Freeast((yyvsp[-1].no)->right);//Clear the return expr ast
 															freereg_no=-1;
 														}
-#line 2503 "y.tab.c"
+#line 2516 "y.tab.c"
     break;
 
   case 119: /* FDefBlock: Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  */
-#line 544 "parse.y"
+#line 557 "parse.y"
                                                                         {    
 
                                                                         if(flag==0) //first function and no global declaration
@@ -2546,7 +2559,7 @@ yyreduce:
 
                                                                             ////////////////////////////////////////////
 																			//Function code generation
-																			funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-8].c));
+																			funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-8].c),-1);
 																			////////////////////////////////////////////
 																			//After function code generation
 																			LClear((yyvsp[-7].c));//to clear the symbol table
@@ -2566,11 +2579,11 @@ yyreduce:
 																			exit(1);
 																		}
 																	}
-#line 2570 "y.tab.c"
+#line 2583 "y.tab.c"
     break;
 
   case 120: /* FDefBlock: Type ID '(' FdefParamListBlock ')' '{' Body '}'  */
-#line 606 "parse.y"
+#line 619 "parse.y"
                                                                                  {
 
                                                                         if(flag==0) //first function and no global declaration
@@ -2614,7 +2627,7 @@ yyreduce:
                                                                             
 																			////////////////////////////////////////////
 																			//Function code generation
-																			funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-7].c));
+																			funccode(fptr,(yyvsp[-1].no)->left,(yyvsp[-1].no)->right,(yyvsp[-7].c),-1);
 																			////////////////////////////////////////////
 																			//After function code generation
 																			LClear((yyvsp[-6].c));//to clear the symbol table
@@ -2635,35 +2648,35 @@ yyreduce:
 																			exit(1);
 																		}
 																	}
-#line 2639 "y.tab.c"
+#line 2652 "y.tab.c"
     break;
 
   case 121: /* FdefParamListBlock: FdefParamList  */
-#line 672 "parse.y"
+#line 685 "parse.y"
                                             {(yyval.param)=(yyvsp[0].param);}
-#line 2645 "y.tab.c"
+#line 2658 "y.tab.c"
     break;
 
   case 122: /* FdefParamListBlock: %empty  */
-#line 673 "parse.y"
+#line 686 "parse.y"
                                             {(yyval.param)=NULL;}
-#line 2651 "y.tab.c"
+#line 2664 "y.tab.c"
     break;
 
   case 123: /* FdefParamList: FdefParamList ',' FdefParam  */
-#line 675 "parse.y"
+#line 688 "parse.y"
                                                                                 {AppendParamlist((yyvsp[-2].param),(yyvsp[0].param));(yyval.param)=(yyvsp[-2].param);}
-#line 2657 "y.tab.c"
+#line 2670 "y.tab.c"
     break;
 
   case 124: /* FdefParamList: FdefParam  */
-#line 676 "parse.y"
+#line 689 "parse.y"
                                                                                                 {(yyval.param)=(yyvsp[0].param);}
-#line 2663 "y.tab.c"
+#line 2676 "y.tab.c"
     break;
 
   case 125: /* FdefParam: Type ID  */
-#line 677 "parse.y"
+#line 690 "parse.y"
                                                                                                     {   
                                                                     if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
                                                                         LInstall("self",NULL,NULL,Cptr);
@@ -2674,51 +2687,55 @@ yyreduce:
 																	LInstall(NULL,NULL,temp,NULL);  
 																	(yyval.param)=temp;         
 																}
-#line 2678 "y.tab.c"
+#line 2691 "y.tab.c"
     break;
 
   case 130: /* LDecl: Type IdList  */
-#line 694 "parse.y"
+#line 707 "parse.y"
                                               {addltype((yyvsp[-1].c));}
-#line 2684 "y.tab.c"
+#line 2697 "y.tab.c"
     break;
 
   case 131: /* IdList: IdList ',' ID  */
-#line 696 "parse.y"
+#line 709 "parse.y"
                                               {LInstall((yyvsp[0].c),NULL,NULL,NULL);}
-#line 2690 "y.tab.c"
+#line 2703 "y.tab.c"
     break;
 
   case 132: /* IdList: ID  */
-#line 697 "parse.y"
+#line 710 "parse.y"
                                                       {
                                                 if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
                                                     LInstall("self",NULL,NULL,Cptr);
                                                
                                                 LInstall((yyvsp[0].c),NULL,NULL,NULL);
                                               }
-#line 2701 "y.tab.c"
+#line 2714 "y.tab.c"
     break;
 
   case 133: /* Body: BEG Slistblock Retstmt END  */
-#line 706 "parse.y"
+#line 719 "parse.y"
                                                     {
+
+                                                if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
+                                                    LInstall("self",NULL,NULL,Cptr);
+                                               
                                                 (yyval.no)=makeConnectorNode('.',(yyvsp[-2].no),(yyvsp[-1].no));
 												//printtree($<no>2);
 												addlbinding();
                                                 printlst();                                        
                                               }
-#line 2712 "y.tab.c"
+#line 2729 "y.tab.c"
     break;
 
   case 134: /* Retstmt: RET E ';'  */
-#line 712 "parse.y"
+#line 729 "parse.y"
                                                 {(yyval.no)=(yyvsp[-1].no);}
-#line 2718 "y.tab.c"
+#line 2735 "y.tab.c"
     break;
 
 
-#line 2722 "y.tab.c"
+#line 2739 "y.tab.c"
 
       default: break;
     }
@@ -2911,7 +2928,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 714 "parse.y"
+#line 731 "parse.y"
 
 
 int yyerror(char const *s)

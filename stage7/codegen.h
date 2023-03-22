@@ -42,7 +42,7 @@ void callcomp(FILE* fptr,char c[10],int leftreg,int rightreg);
 void callret(FILE* fptr,struct tnode* returnexpr,char* functype);
 
 //Codegeneration of function
-void funccode(FILE* fptr,struct tnode* body,struct tnode* returnexpr,char* functype);
+void funccode(FILE *fptr, struct tnode *body, struct tnode *returnexpr,char* functype,int ismain);
 
 //to get the heap address of the field
 int getfieldaddress(struct tnode* t,FILE *fptr);
