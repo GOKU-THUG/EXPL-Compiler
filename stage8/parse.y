@@ -30,6 +30,7 @@
 	FILE* fptr;
 	extern int yylineno;
 	int flag=0;
+    int isfuncdefined=0;
 
 	int yylex(void);
 	int yyerror();
@@ -57,8 +58,15 @@
 %left MUL DIV MOD
 
 %%
-Program : TypeDefBlock ClassDefBlock GDeclBlock FDefList MainBlock            {exit(1);}
-		  |TypeDefBlock ClassDefBlock GDeclBlock MainBlock            {exit(1);};
+Program : TypeDefBlock ClassDefBlock GDeclBlock FDefList MainBlock    {if(isfuncdefined!=0)
+                                                                        printf("FUNCTION NOT DEFINED\n");
+                                                                        exit(1);
+                                                                      }
+		  |TypeDefBlock ClassDefBlock GDeclBlock MainBlock            {
+                                                                        if(isfuncdefined!=0)
+                                                                            printf("FUNCTION NOT DEFINED\n");
+                                                                        exit(1);
+                                                                       };
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TypeDefBlock  : TYPE TypeDefList ENDTYPE    
 			  |
@@ -149,6 +157,7 @@ MethodDecl      : MethodDecl MDecl
 				;
 
 MDecl           : Type ID '(' ParamList ')' ';'{
+                                                 isfuncdefined+=1;//for checking if all functions declared is defined or not
 												if(Cptr==NULL){printf("CPTR NULL in MDecl\n");exit(1);}
 								   
 												if(Cptr->methodcount==8)
@@ -161,7 +170,7 @@ MDecl           : Type ID '(' ParamList ')' ';'{
 											}
 											//Installing the method to class table:Validation is done in classtable
 				|Type ID '('')' ';' {
-												
+												isfuncdefined+=1;
 												if(Cptr==NULL){printf("CPTR NULL in MDecl\n");exit(1);}
 								   
 												if(Cptr->methodcount==8)
@@ -207,8 +216,8 @@ Gidlist    : Gidlist ',' Gid
 Gid :	   ID '[' NUM ']'                           {GInstall($<c>1,NULL,$<i>3,-1,-1,NULL);}                                 
 		 | ID '[' NUM ']' '[' NUM ']'               {GInstall($<c>1,NULL,$<i>3*$<i>6,$<i>3,$<i>6,NULL);}
 		 | ID                                       {GInstall($<c>1,NULL,1,-1,-1,NULL);}
-		 | ID '(' ParamList ')'      				{GInstall($<c>1,NULL,-1,-1,-1,$<param>3);}
-		 | ID '('')'								{GInstall($<c>1,NULL,-1,-1,-1,NULL);};
+		 | ID '(' ParamList ')'      				{isfuncdefined+=1;GInstall($<c>1,NULL,-1,-1,-1,$<param>3);}
+		 | ID '('')'								{isfuncdefined+=1;GInstall($<c>1,NULL,-1,-1,-1,NULL);};
 ParamList:  ParamList ',' Param     				{AppendParamlist($<param>1,$<param>3);$$=$1;}      
 		   |Param                  					{$$=$<param>1;};           
 Param:   Type ID 									{$$=CreateParamlist($<c>1,$<c>2);};
@@ -678,7 +687,7 @@ FDefList  : FDefList FDefBlock
 		   | FDefBlock       
 		   
 FDefBlock : Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  {    
-
+                                                                        isfuncdefined-=1;//to check if the function declared is defined or not
 																		if(flag==0) //first function and no global declaration
 																		{   
 																			flag=1;
@@ -740,7 +749,7 @@ FDefBlock : Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  {
 																		}
 																	}
 		   |Type ID '(' FdefParamListBlock ')' '{' Body '}'              {
-
+                                                                            isfuncdefined-=1;
 																		if(flag==0) //first function and no global declaration
 																		{   
 																			flag=1;

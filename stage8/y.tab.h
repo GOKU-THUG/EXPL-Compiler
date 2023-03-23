@@ -163,7 +163,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 39 "parse.y"
+#line 40 "parse.y"
 
 	struct tnode *no;
 	struct Gsymbol* symbol;

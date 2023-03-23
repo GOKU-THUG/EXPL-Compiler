@@ -100,12 +100,13 @@
 	FILE* fptr;
 	extern int yylineno;
 	int flag=0;
+    int isfuncdefined=0;
 
 	int yylex(void);
 	int yyerror();
 	void indextypecheck(char* type);
 
-#line 109 "y.tab.c"
+#line 110 "y.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -258,7 +259,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 39 "parse.y"
+#line 40 "parse.y"
 
 	struct tnode *no;
 	struct Gsymbol* symbol;
@@ -267,7 +268,7 @@ union YYSTYPE
 	char* c;
 	int i;
 
-#line 271 "y.tab.c"
+#line 272 "y.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -789,20 +790,20 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,    60,    60,    61,    63,    64,    67,    68,    71,   103,
-     104,   107,   109,   110,   112,   113,   116,   127,   128,   131,
-     132,   135,   147,   148,   151,   163,   177,   178,   181,   194,
-     195,   197,   198,   199,   201,   202,   203,   204,   205,   206,
-     207,   208,   209,   210,   211,   212,   213,   214,   216,   217,
-     219,   220,   222,   223,   224,   225,   226,   227,   228,   229,
-     230,   232,   234,   237,   242,   243,   244,   245,   247,   249,
-     253,   259,   262,   266,   269,   271,   276,   280,   286,   290,
-     295,   299,   304,   308,   338,   400,   421,   436,   459,   483,
-     515,   549,   550,   551,   552,   553,   554,   555,   559,   565,
-     566,   567,   568,   569,   570,   571,   572,   573,   576,   586,
-     587,   589,   590,   592,   606,   609,   643,   677,   678,   680,
-     742,   807,   808,   810,   811,   812,   828,   829,   830,   831,
-     832,   834,   835,   847,   859
+       0,    61,    61,    65,    71,    72,    75,    76,    79,   111,
+     112,   115,   117,   118,   120,   121,   124,   135,   136,   139,
+     140,   143,   155,   156,   159,   172,   186,   187,   190,   203,
+     204,   206,   207,   208,   210,   211,   212,   213,   214,   215,
+     216,   217,   218,   219,   220,   221,   222,   223,   225,   226,
+     228,   229,   231,   232,   233,   234,   235,   236,   237,   238,
+     239,   241,   243,   246,   251,   252,   253,   254,   256,   258,
+     262,   268,   271,   275,   278,   280,   285,   289,   295,   299,
+     304,   308,   313,   317,   347,   409,   430,   445,   468,   492,
+     524,   558,   559,   560,   561,   562,   563,   564,   568,   574,
+     575,   576,   577,   578,   579,   580,   581,   582,   585,   595,
+     596,   598,   599,   601,   615,   618,   652,   686,   687,   689,
+     751,   816,   817,   819,   820,   821,   837,   838,   839,   840,
+     841,   843,   844,   856,   868
 };
 #endif
 
@@ -1604,31 +1605,38 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* Program: TypeDefBlock ClassDefBlock GDeclBlock FDefList MainBlock  */
-#line 60 "parse.y"
-                                                                              {exit(1);}
-#line 1610 "y.tab.c"
+#line 61 "parse.y"
+                                                                      {if(isfuncdefined!=0)
+                                                                        printf("FUNCTION NOT DEFINED\n");
+                                                                        exit(1);
+                                                                      }
+#line 1614 "y.tab.c"
     break;
 
   case 3: /* Program: TypeDefBlock ClassDefBlock GDeclBlock MainBlock  */
-#line 61 "parse.y"
-                                                                              {exit(1);}
-#line 1616 "y.tab.c"
+#line 65 "parse.y"
+                                                                              {
+                                                                        if(isfuncdefined!=0)
+                                                                            printf("FUNCTION NOT DEFINED\n");
+                                                                        exit(1);
+                                                                       }
+#line 1624 "y.tab.c"
     break;
 
   case 6: /* TypeDefList: TypeDefList TypeDef  */
-#line 67 "parse.y"
+#line 75 "parse.y"
                                             {printtypetable();}
-#line 1622 "y.tab.c"
+#line 1630 "y.tab.c"
     break;
 
   case 7: /* TypeDefList: TypeDef  */
-#line 68 "parse.y"
+#line 76 "parse.y"
                                                         {printtypetable();}
-#line 1628 "y.tab.c"
+#line 1636 "y.tab.c"
     break;
 
   case 8: /* TypeDef: ID '{' FieldDeclList '}'  */
-#line 71 "parse.y"
+#line 79 "parse.y"
                                            { 
 												//Flags error if the number of member fields is 9 or more
 												if(fieldindex>9)   //only 8 members because the first index of every block is used for storing the next free block
@@ -1659,29 +1667,29 @@ yyreduce:
 												}
 
 											}
-#line 1663 "y.tab.c"
+#line 1671 "y.tab.c"
     break;
 
   case 9: /* FieldDeclList: FieldDeclList FieldDecl ';'  */
-#line 103 "parse.y"
+#line 111 "parse.y"
                                                {Fappend((yyvsp[-2].field),(yyvsp[-1].field));(yyval.field)=(yyvsp[-2].field);}
-#line 1669 "y.tab.c"
+#line 1677 "y.tab.c"
     break;
 
   case 10: /* FieldDeclList: FieldDecl ';'  */
-#line 104 "parse.y"
+#line 112 "parse.y"
                                                            {(yyval.field)=(yyvsp[-1].field);}
-#line 1675 "y.tab.c"
+#line 1683 "y.tab.c"
     break;
 
   case 11: /* FieldDecl: Type ID  */
-#line 107 "parse.y"
+#line 115 "parse.y"
                         {(yyval.field)=Fcreate((yyvsp[0].c),(yyvsp[-1].c));}
-#line 1681 "y.tab.c"
+#line 1689 "y.tab.c"
     break;
 
   case 16: /* Classdef: Cname '{' DECL Fieldlists MethodDecl ENDDECL MethodDefns '}'  */
-#line 116 "parse.y"
+#line 124 "parse.y"
                                                                                     {
 																						//Allocates space for the vft and initializes the vft with the flabels of the member functions
 
@@ -1691,23 +1699,23 @@ yyreduce:
 																						printclasstable(Cptr);
 																						Cptr=NULL;
 																					}
-#line 1695 "y.tab.c"
+#line 1703 "y.tab.c"
     break;
 
   case 17: /* Cname: ID  */
-#line 127 "parse.y"
+#line 135 "parse.y"
                                 {Cptr = CInstall((yyvsp[0].c),NULL);}
-#line 1701 "y.tab.c"
+#line 1709 "y.tab.c"
     break;
 
   case 18: /* Cname: ID Extends ID  */
-#line 128 "parse.y"
+#line 136 "parse.y"
                                                 {Cptr = CInstall((yyvsp[-2].c),(yyvsp[0].c));}
-#line 1707 "y.tab.c"
+#line 1715 "y.tab.c"
     break;
 
   case 21: /* Fld: Type ID ';'  */
-#line 135 "parse.y"
+#line 143 "parse.y"
                                 {
 								if(Cptr==NULL){printf("CPTR NULL in fieldlist\n");exit(1);}
 								   
@@ -1718,12 +1726,13 @@ yyreduce:
 								}
 								DInstall(Cptr,(yyvsp[-2].c),(yyvsp[-1].c));
 							}
-#line 1722 "y.tab.c"
+#line 1730 "y.tab.c"
     break;
 
   case 24: /* MDecl: Type ID '(' ParamList ')' ';'  */
-#line 151 "parse.y"
+#line 159 "parse.y"
                                                {
+                                                 isfuncdefined+=1;//for checking if all functions declared is defined or not
 												if(Cptr==NULL){printf("CPTR NULL in MDecl\n");exit(1);}
 								   
 												if(Cptr->methodcount==8)
@@ -1734,13 +1743,13 @@ yyreduce:
 												MInstall(Cptr,(yyvsp[-4].c),TLookup((yyvsp[-5].c)),(yyvsp[-2].param));
 												
 											}
-#line 1738 "y.tab.c"
+#line 1747 "y.tab.c"
     break;
 
   case 25: /* MDecl: Type ID '(' ')' ';'  */
-#line 163 "parse.y"
+#line 172 "parse.y"
                                                     {
-												
+												isfuncdefined+=1;
 												if(Cptr==NULL){printf("CPTR NULL in MDecl\n");exit(1);}
 								   
 												if(Cptr->methodcount==8)
@@ -1750,11 +1759,11 @@ yyreduce:
 												}
 												MInstall(Cptr,(yyvsp[-3].c),TLookup((yyvsp[-4].c)),NULL);
 								}
-#line 1754 "y.tab.c"
+#line 1763 "y.tab.c"
     break;
 
   case 28: /* GDeclBlock: DECL GDeclList ENDDECL  */
-#line 181 "parse.y"
+#line 190 "parse.y"
                                                     {  
 														printgst();
 														if(flag==0)
@@ -1768,358 +1777,358 @@ yyreduce:
 															fprintf(fptr,"INT 10\n");
 														}
 													}
-#line 1772 "y.tab.c"
+#line 1781 "y.tab.c"
     break;
 
   case 29: /* GDeclBlock: DECL ENDDECL  */
-#line 194 "parse.y"
+#line 203 "parse.y"
                                                                 {}
-#line 1778 "y.tab.c"
+#line 1787 "y.tab.c"
     break;
 
   case 30: /* GDeclBlock: %empty  */
-#line 195 "parse.y"
+#line 204 "parse.y"
                                                                 {}
-#line 1784 "y.tab.c"
+#line 1793 "y.tab.c"
     break;
 
   case 33: /* GDecl: Type Gidlist  */
-#line 199 "parse.y"
+#line 208 "parse.y"
                                                     {addgtype((yyvsp[-1].c));}
-#line 1790 "y.tab.c"
+#line 1799 "y.tab.c"
     break;
 
   case 34: /* Type: INT  */
-#line 201 "parse.y"
+#line 210 "parse.y"
                                                     {(yyval.c)=(yyvsp[0].c);}
-#line 1796 "y.tab.c"
+#line 1805 "y.tab.c"
     break;
 
   case 35: /* Type: STR  */
-#line 202 "parse.y"
+#line 211 "parse.y"
                                                         {(yyval.c)=(yyvsp[0].c);}
-#line 1802 "y.tab.c"
+#line 1811 "y.tab.c"
     break;
 
   case 36: /* Type: VOID  */
-#line 203 "parse.y"
+#line 212 "parse.y"
                                                                                                 {(yyval.c)=(yyvsp[0].c);}
-#line 1808 "y.tab.c"
+#line 1817 "y.tab.c"
     break;
 
   case 37: /* Type: ID  */
-#line 204 "parse.y"
+#line 213 "parse.y"
                                                                                                 {(yyval.c)=(yyvsp[0].c);}
-#line 1814 "y.tab.c"
+#line 1823 "y.tab.c"
     break;
 
   case 40: /* Gid: ID '[' NUM ']'  */
-#line 207 "parse.y"
+#line 216 "parse.y"
                                                     {GInstall((yyvsp[-3].c),NULL,(yyvsp[-1].i),-1,-1,NULL);}
-#line 1820 "y.tab.c"
+#line 1829 "y.tab.c"
     break;
 
   case 41: /* Gid: ID '[' NUM ']' '[' NUM ']'  */
-#line 208 "parse.y"
+#line 217 "parse.y"
                                                             {GInstall((yyvsp[-6].c),NULL,(yyvsp[-4].i)*(yyvsp[-1].i),(yyvsp[-4].i),(yyvsp[-1].i),NULL);}
-#line 1826 "y.tab.c"
+#line 1835 "y.tab.c"
     break;
 
   case 42: /* Gid: ID  */
-#line 209 "parse.y"
+#line 218 "parse.y"
                                                             {GInstall((yyvsp[0].c),NULL,1,-1,-1,NULL);}
-#line 1832 "y.tab.c"
+#line 1841 "y.tab.c"
     break;
 
   case 43: /* Gid: ID '(' ParamList ')'  */
-#line 210 "parse.y"
-                                                                        {GInstall((yyvsp[-3].c),NULL,-1,-1,-1,(yyvsp[-1].param));}
-#line 1838 "y.tab.c"
+#line 219 "parse.y"
+                                                                        {isfuncdefined+=1;GInstall((yyvsp[-3].c),NULL,-1,-1,-1,(yyvsp[-1].param));}
+#line 1847 "y.tab.c"
     break;
 
   case 44: /* Gid: ID '(' ')'  */
-#line 211 "parse.y"
-                                                                                        {GInstall((yyvsp[-2].c),NULL,-1,-1,-1,NULL);}
-#line 1844 "y.tab.c"
+#line 220 "parse.y"
+                                                                                        {isfuncdefined+=1;GInstall((yyvsp[-2].c),NULL,-1,-1,-1,NULL);}
+#line 1853 "y.tab.c"
     break;
 
   case 45: /* ParamList: ParamList ',' Param  */
-#line 212 "parse.y"
+#line 221 "parse.y"
                                                                 {AppendParamlist((yyvsp[-2].param),(yyvsp[0].param));(yyval.param)=(yyvsp[-2].param);}
-#line 1850 "y.tab.c"
+#line 1859 "y.tab.c"
     break;
 
   case 46: /* ParamList: Param  */
-#line 213 "parse.y"
+#line 222 "parse.y"
                                                                                 {(yyval.param)=(yyvsp[0].param);}
-#line 1856 "y.tab.c"
+#line 1865 "y.tab.c"
     break;
 
   case 47: /* Param: Type ID  */
-#line 214 "parse.y"
+#line 223 "parse.y"
                                                                                         {(yyval.param)=CreateParamlist((yyvsp[-1].c),(yyvsp[0].c));}
-#line 1862 "y.tab.c"
+#line 1871 "y.tab.c"
     break;
 
   case 48: /* Slistblock: Slist  */
-#line 216 "parse.y"
+#line 225 "parse.y"
                                                       {(yyval.no)=(yyvsp[0].no);}
-#line 1868 "y.tab.c"
+#line 1877 "y.tab.c"
     break;
 
   case 49: /* Slistblock: %empty  */
-#line 217 "parse.y"
+#line 226 "parse.y"
                                                               {(yyval.no)=NULL;}
-#line 1874 "y.tab.c"
+#line 1883 "y.tab.c"
     break;
 
   case 50: /* Slist: Slist Stmt  */
-#line 219 "parse.y"
+#line 228 "parse.y"
                                                    {(yyval.no)=makeConnectorNode('.',(yyvsp[-1].no),(yyvsp[0].no));}
-#line 1880 "y.tab.c"
+#line 1889 "y.tab.c"
     break;
 
   case 51: /* Slist: Stmt  */
-#line 220 "parse.y"
+#line 229 "parse.y"
                                                         {(yyval.no)=(yyvsp[0].no);}
-#line 1886 "y.tab.c"
+#line 1895 "y.tab.c"
     break;
 
   case 52: /* Stmt: InputStmt ';'  */
-#line 222 "parse.y"
+#line 231 "parse.y"
                                                    {(yyval.no)=(yyvsp[-1].no);}
-#line 1892 "y.tab.c"
+#line 1901 "y.tab.c"
     break;
 
   case 53: /* Stmt: OutputStmt ';'  */
-#line 223 "parse.y"
+#line 232 "parse.y"
                                                            {(yyval.no)=(yyvsp[-1].no);}
-#line 1898 "y.tab.c"
+#line 1907 "y.tab.c"
     break;
 
   case 54: /* Stmt: AsgStmt ';'  */
-#line 224 "parse.y"
+#line 233 "parse.y"
                                                         {(yyval.no)=(yyvsp[-1].no);}
-#line 1904 "y.tab.c"
+#line 1913 "y.tab.c"
     break;
 
   case 55: /* Stmt: Ifstmt ';'  */
-#line 225 "parse.y"
+#line 234 "parse.y"
                                                        {(yyval.no)=(yyvsp[-1].no);}
-#line 1910 "y.tab.c"
+#line 1919 "y.tab.c"
     break;
 
   case 56: /* Stmt: Whilestmt  */
-#line 226 "parse.y"
+#line 235 "parse.y"
                                                        {(yyval.no)=(yyvsp[0].no);}
-#line 1916 "y.tab.c"
+#line 1925 "y.tab.c"
     break;
 
   case 57: /* Stmt: Dowhilestmt  */
-#line 227 "parse.y"
+#line 236 "parse.y"
                                                         {(yyval.no)=(yyvsp[0].no);}
-#line 1922 "y.tab.c"
+#line 1931 "y.tab.c"
     break;
 
   case 58: /* Stmt: Repeatuntil ';'  */
-#line 228 "parse.y"
+#line 237 "parse.y"
                                                          {(yyval.no)=(yyvsp[-1].no);}
-#line 1928 "y.tab.c"
+#line 1937 "y.tab.c"
     break;
 
   case 59: /* Stmt: FreeStmt ';'  */
-#line 229 "parse.y"
+#line 238 "parse.y"
                                                                                                 {(yyval.no)=(yyvsp[-1].no);}
-#line 1934 "y.tab.c"
+#line 1943 "y.tab.c"
     break;
 
   case 60: /* Stmt: BREAK ';'  */
-#line 230 "parse.y"
+#line 239 "parse.y"
                                                           {char c[6]="break";
 													(yyval.no)=makeBreak_ContinueNode(c);}
-#line 1941 "y.tab.c"
+#line 1950 "y.tab.c"
     break;
 
   case 61: /* Stmt: CONTINUE ';'  */
-#line 232 "parse.y"
+#line 241 "parse.y"
                                                           {char c[9]="continue";
 													(yyval.no)=makeBreak_ContinueNode(c);}
-#line 1948 "y.tab.c"
+#line 1957 "y.tab.c"
     break;
 
   case 62: /* Stmt: DELETE '(' FIELD ')' ';'  */
-#line 234 "parse.y"
+#line 243 "parse.y"
                                                            {(yyval.no)==dynamicmemorynode((yyvsp[-2].no)->type,Delete,(yyvsp[-2].no),NULL);}
-#line 1954 "y.tab.c"
+#line 1963 "y.tab.c"
     break;
 
   case 63: /* Ifstmt: IF '(' E ')' Then Slistblock Else Slistblock ENDIF  */
-#line 237 "parse.y"
+#line 246 "parse.y"
                                                              {struct tnode* else_node;
 													struct tnode* connector_node;
 													else_node=makeBranchingNode("Else",(yyvsp[-1].no),NULL);
 													connector_node=makeConnectorNode('.',(yyvsp[-3].no),else_node);
 													(yyval.no)=makeBranchingNode("If",(yyvsp[-6].no),connector_node);}
-#line 1964 "y.tab.c"
+#line 1973 "y.tab.c"
     break;
 
   case 64: /* Ifstmt: IF '(' E ')' Then Slistblock ENDIF  */
-#line 242 "parse.y"
+#line 251 "parse.y"
                                                                 {(yyval.no)=makeBranchingNode("If",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1970 "y.tab.c"
+#line 1979 "y.tab.c"
     break;
 
   case 65: /* Whilestmt: WHILE '(' E ')' DO Slistblock ENDWHILE ';'  */
-#line 243 "parse.y"
+#line 252 "parse.y"
                                                            {(yyval.no)=makeBranchingNode("While",(yyvsp[-5].no),(yyvsp[-2].no));}
-#line 1976 "y.tab.c"
+#line 1985 "y.tab.c"
     break;
 
   case 66: /* Dowhilestmt: DO Slistblock WHILE '(' E ')' ';'  */
-#line 244 "parse.y"
+#line 253 "parse.y"
                                                            {(yyval.no)=makeBranchingNode("Do",(yyvsp[-5].no),(yyvsp[-2].no));}
-#line 1982 "y.tab.c"
+#line 1991 "y.tab.c"
     break;
 
   case 67: /* Repeatuntil: REPEAT Slistblock UNTIL '(' E ')'  */
-#line 245 "parse.y"
+#line 254 "parse.y"
                                                         {(yyval.no)=makeBranchingNode("Repeat",(yyvsp[-4].no),(yyvsp[-1].no));}
-#line 1988 "y.tab.c"
+#line 1997 "y.tab.c"
     break;
 
   case 68: /* InputStmt: READ '(' ID ')'  */
-#line 247 "parse.y"
+#line 256 "parse.y"
                                                    {struct tnode* var=makeVariableNode((yyvsp[-1].c));
-													(yyval.no)=makereadnode(var);}
-#line 1995 "y.tab.c"
-    break;
-
-  case 69: /* InputStmt: READ '(' ID '[' E ']' ')'  */
-#line 249 "parse.y"
-                                                           {struct tnode* var=makeVariableNode((yyvsp[-4].c));
-													indextypecheck((yyvsp[-2].no)->type->name);
-													var->left=(yyvsp[-2].no);
 													(yyval.no)=makereadnode(var);}
 #line 2004 "y.tab.c"
     break;
 
+  case 69: /* InputStmt: READ '(' ID '[' E ']' ')'  */
+#line 258 "parse.y"
+                                                           {struct tnode* var=makeVariableNode((yyvsp[-4].c));
+													indextypecheck((yyvsp[-2].no)->type->name);
+													var->left=(yyvsp[-2].no);
+													(yyval.no)=makereadnode(var);}
+#line 2013 "y.tab.c"
+    break;
+
   case 70: /* InputStmt: READ '(' ID '[' E ']' '[' E ']' ')'  */
-#line 253 "parse.y"
+#line 262 "parse.y"
                                                                {struct tnode* var=makeVariableNode((yyvsp[-7].c));
 													indextypecheck((yyvsp[-5].no)->type->name);
 													indextypecheck((yyvsp[-2].no)->type->name);
 													var->left=(yyvsp[-5].no);    //Row
 													var->right=(yyvsp[-2].no);  //Column
 													(yyval.no)=makereadnode(var);}
-#line 2015 "y.tab.c"
+#line 2024 "y.tab.c"
     break;
 
   case 71: /* InputStmt: READ '(' FIELD ')'  */
-#line 259 "parse.y"
+#line 268 "parse.y"
                                                                 {(yyval.no)=makereadnode((yyvsp[-1].no));}
-#line 2021 "y.tab.c"
+#line 2030 "y.tab.c"
     break;
 
   case 72: /* FreeStmt: FREE '(' ID ')'  */
-#line 262 "parse.y"
+#line 271 "parse.y"
                                                     {
 														struct tnode* var=makeVariableNode((yyvsp[-1].c));
 														(yyval.no)==dynamicmemorynode(var->type,Free,var,NULL);
 													}
-#line 2030 "y.tab.c"
+#line 2039 "y.tab.c"
     break;
 
   case 73: /* FreeStmt: FREE '(' FIELD ')'  */
-#line 266 "parse.y"
+#line 275 "parse.y"
                                                             { (yyval.no)==dynamicmemorynode((yyvsp[-1].no)->type,Free,(yyvsp[-1].no),NULL);}
-#line 2036 "y.tab.c"
+#line 2045 "y.tab.c"
     break;
 
   case 74: /* OutputStmt: WRITE '(' E ')'  */
-#line 269 "parse.y"
+#line 278 "parse.y"
                                                                    {(yyval.no)=makewritenode((yyvsp[-1].no));}
-#line 2042 "y.tab.c"
+#line 2051 "y.tab.c"
     break;
 
   case 75: /* AsgStmt: ID EQUAL E  */
-#line 271 "parse.y"
+#line 280 "parse.y"
                                                                            {
 													struct tnode* var=makeVariableNode((yyvsp[-2].c));
 													//if ID and E are classes then makeoperator node typechecks and also checks if E is a valid descendent of ID
 													(yyval.no) = makeOperatorNode('=',var,(yyvsp[0].no));  
 												   }
-#line 2052 "y.tab.c"
+#line 2061 "y.tab.c"
     break;
 
   case 76: /* AsgStmt: ID '[' E ']' EQUAL E  */
-#line 276 "parse.y"
+#line 285 "parse.y"
                                                                            {struct tnode* var=makeVariableNode((yyvsp[-5].c));
 													indextypecheck((yyvsp[-3].no)->type->name);
 													var->left=(yyvsp[-3].no);
 													(yyval.no) = makeOperatorNode('=',var,(yyvsp[0].no));}
-#line 2061 "y.tab.c"
+#line 2070 "y.tab.c"
     break;
 
   case 77: /* AsgStmt: ID '[' E ']' '[' E ']' EQUAL E  */
-#line 280 "parse.y"
+#line 289 "parse.y"
                                                                    {struct tnode* var=makeVariableNode((yyvsp[-8].c));
 													indextypecheck((yyvsp[-6].no)->type->name);
 													indextypecheck((yyvsp[-3].no)->type->name);
 													var->left=(yyvsp[-6].no);    //Row
 													var->right=(yyvsp[-3].no);  //Column
 													(yyval.no)=makeOperatorNode('=',var,(yyvsp[0].no));}
-#line 2072 "y.tab.c"
+#line 2081 "y.tab.c"
     break;
 
   case 78: /* AsgStmt: FIELD EQUAL E  */
-#line 286 "parse.y"
+#line 295 "parse.y"
                                                         {
 													//FIELD CAN ONLY BE A CLASS:SELF.ID
 													//operator node checks if is descendant class or not.
 													(yyval.no) = makeOperatorNode('=',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2081 "y.tab.c"
+#line 2090 "y.tab.c"
     break;
 
   case 79: /* AsgStmt: ID EQUAL ALLOC '(' ')'  */
-#line 290 "parse.y"
+#line 299 "parse.y"
                                                         { 
 												 struct tnode* var=makeVariableNode((yyvsp[-4].c));
 												 struct tnode* allocnode=dynamicmemorynode(var->type,Alloc,NULL,NULL);
 												 (yyval.no)=makeOperatorNode('=',var,allocnode);
 												}
-#line 2091 "y.tab.c"
+#line 2100 "y.tab.c"
     break;
 
   case 80: /* AsgStmt: FIELD EQUAL ALLOC '(' ')'  */
-#line 295 "parse.y"
+#line 304 "parse.y"
                                                                         {
 													struct tnode* allocnode=dynamicmemorynode((yyvsp[-4].no)->type,Alloc,NULL,NULL);
 													(yyval.no)=makeOperatorNode('=',(yyvsp[-4].no),allocnode);
 												}
-#line 2100 "y.tab.c"
+#line 2109 "y.tab.c"
     break;
 
   case 81: /* AsgStmt: ID EQUAL INITIALIZE '(' ')'  */
-#line 299 "parse.y"
+#line 308 "parse.y"
                                                         { 
 												 struct tnode* var=makeVariableNode((yyvsp[-4].c));
 												 struct tnode* initializenode=dynamicmemorynode(var->type,Initialize,NULL,NULL);
 												 (yyval.no)=makeOperatorNode('=',var,initializenode);
 												}
-#line 2110 "y.tab.c"
+#line 2119 "y.tab.c"
     break;
 
   case 82: /* AsgStmt: FIELD EQUAL INITIALIZE '(' ')'  */
-#line 304 "parse.y"
+#line 313 "parse.y"
                                                                 {
 													struct tnode* initializenode=dynamicmemorynode((yyvsp[-4].no)->type,Initialize,NULL,NULL);
 													(yyval.no)=makeOperatorNode('=',(yyvsp[-4].no),initializenode);
 												}
-#line 2119 "y.tab.c"
+#line 2128 "y.tab.c"
     break;
 
   case 83: /* AsgStmt: ID EQUAL NEW '(' ID ')'  */
-#line 308 "parse.y"
+#line 317 "parse.y"
                                                         {
 													//checks if valid(descendent and parent class or not) and exits if error else does nothing
 													//descendent class validation
@@ -2150,11 +2159,11 @@ yyreduce:
 													struct tnode* newnode=dynamicmemorynode(var1->type,New,var1,constnode);
 													(yyval.no)=makeOperatorNode('=',var,newnode);
 												}
-#line 2154 "y.tab.c"
+#line 2163 "y.tab.c"
     break;
 
   case 84: /* AsgStmt: FIELD EQUAL NEW '(' ID ')'  */
-#line 338 "parse.y"
+#line 347 "parse.y"
                                                         {
 													//FIELD CAN ONLY be a class or userdeftype.
 													struct tnode* var=(yyvsp[-5].no);
@@ -2215,11 +2224,11 @@ yyreduce:
 													//the beow code is put after dynamic memory node because it will detect if it is a class or not
 													(yyval.no)=makeOperatorNode('=',var,newnode);
 												}
-#line 2219 "y.tab.c"
+#line 2228 "y.tab.c"
     break;
 
   case 85: /* FIELD: SELF '.' ID  */
-#line 400 "parse.y"
+#line 409 "parse.y"
                                                     { 
 														 //Below code is incase there is no parameters and local declarations inside the function of the class
 														 if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
@@ -2240,11 +2249,11 @@ yyreduce:
 														var->type=field->type;
 														(yyval.no)=var;
 													}
-#line 2244 "y.tab.c"
+#line 2253 "y.tab.c"
     break;
 
   case 86: /* FIELD: ID '.' ID  */
-#line 421 "parse.y"
+#line 430 "parse.y"
                                                                                             {   //First ID always has a type,can never be a class
 														//First ID cannot be a class because the second id cannot be a data member
 														//printf("%s,%s",$<c>1,$<c>3);
@@ -2260,11 +2269,11 @@ yyreduce:
 														var->type=field->type;
 														(yyval.no)=var;
 													}
-#line 2264 "y.tab.c"
+#line 2273 "y.tab.c"
     break;
 
   case 87: /* FIELD: FIELD '.' ID  */
-#line 436 "parse.y"
+#line 445 "parse.y"
                                                                                         {
 														struct tnode* var=(yyvsp[-2].no);
 														//If field is a class then var->type will be null else it won't be null
@@ -2286,11 +2295,11 @@ yyreduce:
 														var->type=field->type;
 														(yyval.no)=var;
 		  											}
-#line 2290 "y.tab.c"
+#line 2299 "y.tab.c"
     break;
 
   case 88: /* FieldFunction: SELF '.' ID '(' ArglistBlock ')'  */
-#line 459 "parse.y"
+#line 468 "parse.y"
                                                              {   
 															//Below code is incase there is no parameters and local declarations inside the function of the class
 															if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
@@ -2315,11 +2324,11 @@ yyreduce:
 															var->next=vft;
 															(yyval.no) = makeFunctionNode((yyvsp[-3].c),(yyvsp[-1].no),NULL,member,var);
 														}
-#line 2319 "y.tab.c"
+#line 2328 "y.tab.c"
     break;
 
   case 89: /* FieldFunction: ID '.' ID '(' ArglistBlock ')'  */
-#line 483 "parse.y"
+#line 492 "parse.y"
                                                                              {   //The class variable is always declared in the global symbol table.
 															//This will not occurinside a class.Eg:a.b(c):WIthin functions outside class
 															struct tnode* temp=(yyvsp[-1].no);
@@ -2352,11 +2361,11 @@ yyreduce:
 															var->next=constnode;
 															(yyval.no) = makeFunctionNode((yyvsp[-3].c),(yyvsp[-1].no),NULL,member,var);
 														}
-#line 2356 "y.tab.c"
+#line 2365 "y.tab.c"
     break;
 
   case 90: /* FieldFunction: FIELD '.' ID '(' ArglistBlock ')'  */
-#line 515 "parse.y"
+#line 524 "parse.y"
                                                                            {
 															//can only be self.id where id is a class
 															struct tnode* var=(yyvsp[-5].no);	//HERE VAR IS A FIELD NODE
@@ -2389,121 +2398,121 @@ yyreduce:
 															//Arguments(makefunctionnode):funcname,arglist(left child),gsymboltable(outside class functions),classtable(inside class functions),rightchild(for self/id/field)
 															(yyval.no) = makeFunctionNode((yyvsp[-3].c),(yyvsp[-1].no),NULL,member,var);
 														  }
-#line 2393 "y.tab.c"
+#line 2402 "y.tab.c"
     break;
 
   case 91: /* E: E PLUS E  */
-#line 549 "parse.y"
+#line 558 "parse.y"
                                                                                    {(yyval.no) = makeOperatorNode('+',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2399 "y.tab.c"
+#line 2408 "y.tab.c"
     break;
 
   case 92: /* E: E MINUS E  */
-#line 550 "parse.y"
+#line 559 "parse.y"
                                                                                    {(yyval.no) = makeOperatorNode('-',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2405 "y.tab.c"
+#line 2414 "y.tab.c"
     break;
 
   case 93: /* E: E MUL E  */
-#line 551 "parse.y"
+#line 560 "parse.y"
                                                                                            {(yyval.no) = makeOperatorNode('*',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2411 "y.tab.c"
+#line 2420 "y.tab.c"
     break;
 
   case 94: /* E: E DIV E  */
-#line 552 "parse.y"
+#line 561 "parse.y"
                                                                                            {(yyval.no) = makeOperatorNode('/',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2417 "y.tab.c"
+#line 2426 "y.tab.c"
     break;
 
   case 95: /* E: E MOD E  */
-#line 553 "parse.y"
+#line 562 "parse.y"
                                                                                            {(yyval.no) = makeOperatorNode('%',(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2423 "y.tab.c"
+#line 2432 "y.tab.c"
     break;
 
   case 96: /* E: '(' E ')'  */
-#line 554 "parse.y"
+#line 563 "parse.y"
                                                                                    {(yyval.no) = (yyvsp[-1].no);}
-#line 2429 "y.tab.c"
+#line 2438 "y.tab.c"
     break;
 
   case 97: /* E: ID '[' E ']'  */
-#line 555 "parse.y"
+#line 564 "parse.y"
                                                                                    {struct tnode* var=makeVariableNode((yyvsp[-3].c));
 													indextypecheck((yyvsp[-1].no)->type->name);
 													var->left=(yyvsp[-1].no);
 													(yyval.no)=var;}
-#line 2438 "y.tab.c"
+#line 2447 "y.tab.c"
     break;
 
   case 98: /* E: ID '[' E ']' '[' E ']'  */
-#line 559 "parse.y"
+#line 568 "parse.y"
                                                                                 {struct tnode* var=makeVariableNode((yyvsp[-6].c));
 													indextypecheck((yyvsp[-4].no)->type->name);
 													indextypecheck((yyvsp[-1].no)->type->name);
 													var->left=(yyvsp[-4].no);    //Row
 													var->right=(yyvsp[-1].no);  //Column 
 													(yyval.no)=var;}
-#line 2449 "y.tab.c"
+#line 2458 "y.tab.c"
     break;
 
   case 99: /* E: NUM  */
-#line 565 "parse.y"
+#line 574 "parse.y"
                                                                                            {(yyval.no)= makeConstantNode((yyvsp[0].i),NULL);}
-#line 2455 "y.tab.c"
+#line 2464 "y.tab.c"
     break;
 
   case 100: /* E: ID  */
-#line 566 "parse.y"
+#line 575 "parse.y"
                                                                                    {(yyval.no)= makeVariableNode((yyvsp[0].c));}
-#line 2461 "y.tab.c"
+#line 2470 "y.tab.c"
     break;
 
   case 101: /* E: NULLPTR  */
-#line 567 "parse.y"
+#line 576 "parse.y"
                                                           {(yyval.no)= makeConstantNode(-1,NULL);}
-#line 2467 "y.tab.c"
+#line 2476 "y.tab.c"
     break;
 
   case 102: /* E: STRING  */
-#line 568 "parse.y"
+#line 577 "parse.y"
                                                                                    {(yyval.no)= makeConstantNode(-1,(yyvsp[0].c));}
-#line 2473 "y.tab.c"
+#line 2482 "y.tab.c"
     break;
 
   case 103: /* E: E COMP E  */
-#line 569 "parse.y"
+#line 578 "parse.y"
                                                                                    {(yyval.no)= makeComparisonNode((yyvsp[-1].c),(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2479 "y.tab.c"
+#line 2488 "y.tab.c"
     break;
 
   case 104: /* E: E AND E  */
-#line 570 "parse.y"
+#line 579 "parse.y"
                                                        {(yyval.no)= makeLogicalNode((yyvsp[-1].c),(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2485 "y.tab.c"
+#line 2494 "y.tab.c"
     break;
 
   case 105: /* E: E OR E  */
-#line 571 "parse.y"
+#line 580 "parse.y"
                                                        {(yyval.no)= makeLogicalNode((yyvsp[-1].c),(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2491 "y.tab.c"
+#line 2500 "y.tab.c"
     break;
 
   case 106: /* E: E XOR E  */
-#line 572 "parse.y"
+#line 581 "parse.y"
                                                        {(yyval.no)= makeLogicalNode((yyvsp[-1].c),(yyvsp[-2].no),(yyvsp[0].no));}
-#line 2497 "y.tab.c"
+#line 2506 "y.tab.c"
     break;
 
   case 107: /* E: NOT E  */
-#line 573 "parse.y"
+#line 582 "parse.y"
                                                        {(yyval.no)= makeLogicalNode((yyvsp[-1].c),(yyvsp[0].no),NULL);}
-#line 2503 "y.tab.c"
+#line 2512 "y.tab.c"
     break;
 
   case 108: /* E: ID '(' ArglistBlock ')'  */
-#line 576 "parse.y"
+#line 585 "parse.y"
                                                         {
 													struct Gsymbol* gtemp= GLookup((yyvsp[-3].c));
 													if(gtemp == NULL){yyerror("Yacc : Undefined function\n");exit(1);}
@@ -2513,35 +2522,35 @@ yyreduce:
 													{yyerror("Yacc :invalid argument return type \n");exit(1);}
 													(yyval.no) = makeFunctionNode((yyvsp[-3].c),(yyvsp[-1].no),gtemp,NULL,NULL);
 												   }
-#line 2517 "y.tab.c"
+#line 2526 "y.tab.c"
     break;
 
   case 109: /* E: FIELD  */
-#line 586 "parse.y"
+#line 595 "parse.y"
                                                            {(yyval.no)=(yyvsp[0].no);}
-#line 2523 "y.tab.c"
+#line 2532 "y.tab.c"
     break;
 
   case 110: /* E: FieldFunction  */
-#line 587 "parse.y"
+#line 596 "parse.y"
                                                        {(yyval.no)=(yyvsp[0].no);}
-#line 2529 "y.tab.c"
+#line 2538 "y.tab.c"
     break;
 
   case 111: /* ArglistBlock: ArgList  */
-#line 589 "parse.y"
+#line 598 "parse.y"
                                                     {(yyval.no)=(yyvsp[0].no);}
-#line 2535 "y.tab.c"
+#line 2544 "y.tab.c"
     break;
 
   case 112: /* ArglistBlock: %empty  */
-#line 590 "parse.y"
+#line 599 "parse.y"
                                                                 {(yyval.no)=NULL;}
-#line 2541 "y.tab.c"
+#line 2550 "y.tab.c"
     break;
 
   case 113: /* ArgList: ArgList ',' E  */
-#line 592 "parse.y"
+#line 601 "parse.y"
                                                  {
 													struct tnode* temp=(yyvsp[-2].no);
 													if(temp==NULL)
@@ -2556,17 +2565,17 @@ yyreduce:
 													}
 													(yyval.no)=(yyvsp[-2].no);   
 												   }
-#line 2560 "y.tab.c"
+#line 2569 "y.tab.c"
     break;
 
   case 114: /* ArgList: E  */
-#line 606 "parse.y"
+#line 615 "parse.y"
                                                            {(yyval.no)=(yyvsp[0].no);}
-#line 2566 "y.tab.c"
+#line 2575 "y.tab.c"
     break;
 
   case 115: /* MainBlock: INT MAIN '(' ')' '{' LdeclBlock Body '}'  */
-#line 610 "parse.y"
+#line 619 "parse.y"
                                                                                                                 {
 															if(flag==0) //NO CLASS AND GDECL BLOCK AND OUTSIDE FUNCTION DEF
 															{
@@ -2600,11 +2609,11 @@ yyreduce:
 															Freeast((yyvsp[-1].no)->right);//Clear the return expr ast
 															freereg_no=-1;
 														}
-#line 2604 "y.tab.c"
+#line 2613 "y.tab.c"
     break;
 
   case 116: /* MainBlock: INT MAIN '(' ')' '{' Body '}'  */
-#line 644 "parse.y"
+#line 653 "parse.y"
                                                                                                                 {
 															if(flag==0) //NO GDECL BLOCK and function definition
 															{
@@ -2635,13 +2644,13 @@ yyreduce:
 															Freeast((yyvsp[-1].no)->right);//Clear the return expr ast
 															freereg_no=-1;
 														}
-#line 2639 "y.tab.c"
+#line 2648 "y.tab.c"
     break;
 
   case 119: /* FDefBlock: Type ID '(' FdefParamListBlock ')' '{' LdeclBlock Body '}'  */
-#line 680 "parse.y"
+#line 689 "parse.y"
                                                                         {    
-
+                                                                        isfuncdefined-=1;//to check if the function declared is defined or not
 																		if(flag==0) //first function and no global declaration
 																		{   
 																			flag=1;
@@ -2702,13 +2711,13 @@ yyreduce:
 																			exit(1);
 																		}
 																	}
-#line 2706 "y.tab.c"
+#line 2715 "y.tab.c"
     break;
 
   case 120: /* FDefBlock: Type ID '(' FdefParamListBlock ')' '{' Body '}'  */
-#line 742 "parse.y"
+#line 751 "parse.y"
                                                                                  {
-
+                                                                            isfuncdefined-=1;
 																		if(flag==0) //first function and no global declaration
 																		{   
 																			flag=1;
@@ -2770,35 +2779,35 @@ yyreduce:
 																			exit(1);
 																		}
 																	}
-#line 2774 "y.tab.c"
+#line 2783 "y.tab.c"
     break;
 
   case 121: /* FdefParamListBlock: FdefParamList  */
-#line 807 "parse.y"
+#line 816 "parse.y"
                                             {(yyval.param)=(yyvsp[0].param);}
-#line 2780 "y.tab.c"
+#line 2789 "y.tab.c"
     break;
 
   case 122: /* FdefParamListBlock: %empty  */
-#line 808 "parse.y"
+#line 817 "parse.y"
                                                             {(yyval.param)=NULL;}
-#line 2786 "y.tab.c"
+#line 2795 "y.tab.c"
     break;
 
   case 123: /* FdefParamList: FdefParamList ',' FdefParam  */
-#line 810 "parse.y"
+#line 819 "parse.y"
                                                                                 {AppendParamlist((yyvsp[-2].param),(yyvsp[0].param));(yyval.param)=(yyvsp[-2].param);}
-#line 2792 "y.tab.c"
+#line 2801 "y.tab.c"
     break;
 
   case 124: /* FdefParamList: FdefParam  */
-#line 811 "parse.y"
+#line 820 "parse.y"
                                                                                                 {(yyval.param)=(yyvsp[0].param);}
-#line 2798 "y.tab.c"
+#line 2807 "y.tab.c"
     break;
 
   case 125: /* FdefParam: Type ID  */
-#line 812 "parse.y"
+#line 821 "parse.y"
                                                                                                     {   
 																	if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
 																		LInstall("self",NULL,NULL,Cptr);
@@ -2812,23 +2821,23 @@ yyreduce:
 																	LInstall(NULL,NULL,temp,NULL);  
 																	(yyval.param)=temp;         
 																}
-#line 2816 "y.tab.c"
+#line 2825 "y.tab.c"
     break;
 
   case 130: /* LDecl: Type IdList  */
-#line 832 "parse.y"
+#line 841 "parse.y"
                                               {addltype((yyvsp[-1].c));}
-#line 2822 "y.tab.c"
+#line 2831 "y.tab.c"
     break;
 
   case 131: /* IdList: IdList ',' ID  */
-#line 834 "parse.y"
+#line 843 "parse.y"
                                               {LInstall((yyvsp[0].c),NULL,NULL,NULL);}
-#line 2828 "y.tab.c"
+#line 2837 "y.tab.c"
     break;
 
   case 132: /* IdList: ID  */
-#line 835 "parse.y"
+#line 844 "parse.y"
                                                       {
 												if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
 													LInstall("self",NULL,NULL,Cptr);
@@ -2838,11 +2847,11 @@ yyreduce:
 
 												LInstall((yyvsp[0].c),NULL,NULL,NULL);
 											  }
-#line 2842 "y.tab.c"
+#line 2851 "y.tab.c"
     break;
 
   case 133: /* Body: BEG Slistblock Retstmt END  */
-#line 847 "parse.y"
+#line 856 "parse.y"
                                                     {
 												if(Cptr!=NULL && LLookup("self")==NULL)   //functions inside class and self has not been defined before
 													LInstall("self",NULL,NULL,Cptr);
@@ -2855,17 +2864,17 @@ yyreduce:
 												addlbinding();
 												printlst();                                        
 											  }
-#line 2859 "y.tab.c"
+#line 2868 "y.tab.c"
     break;
 
   case 134: /* Retstmt: RET E ';'  */
-#line 859 "parse.y"
+#line 868 "parse.y"
                                                 {(yyval.no)=(yyvsp[-1].no);}
-#line 2865 "y.tab.c"
+#line 2874 "y.tab.c"
     break;
 
 
-#line 2869 "y.tab.c"
+#line 2878 "y.tab.c"
 
       default: break;
     }
@@ -3058,7 +3067,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 861 "parse.y"
+#line 870 "parse.y"
 
 
 int yyerror(char const *s)
