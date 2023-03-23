@@ -600,6 +600,9 @@ int codeGen(struct tnode *t, FILE *fptr)
             {
                 int reg_no = codeGen(args, fptr);
 
+                if(args->left!=NULL)
+                    fprintf(fptr, "ADD R%d,1\n", reg_no);
+                
                 //whether it is a variable node(for self.func) or constant node(vft pointer obj for id.function)
                 fprintf(fptr, "MOV R%d,[R%d]\n", reg_no, reg_no);
 
@@ -636,20 +639,23 @@ int codeGen(struct tnode *t, FILE *fptr)
         
         else 
         {
-           if(t->right->next==NULL)        //INCASE OF FIELD.FUNCTION:SINCE POLYMORPHISM IS NOT POSSIBLE AND HENCE VIRTUAL FUNCTION TABLE DOES NOT COME INTO PLAY
-                 fprintf(fptr, "\tCALL C%d\n", t->member->flabel); // For calling the member function
-            
-            else
-            {
+                int vptraddrreg;   //for both self.function and id.function
                 int offset;
 
+                if(t->right->next!=NULL)
+                    vptraddrreg=codeGen(t->right->next,fptr);
+                
+                else
+                { 
+                    vptraddrreg=codeGen(t->right,fptr);
+                    fprintf(fptr,"ADD R%d,1\n",vptraddrreg);
+                }
                 offset=t->member->funcposition;
 
-                int vptraddrreg=codeGen(t->right->next,fptr);   //for both self.function and id.function
-               
                 //gets the base address of the vft of the decendant class;
                 fprintf(fptr,"MOV R%d,[R%d]\n",vptraddrreg,vptraddrreg);
 
+        
                 //adds the offset to the base address
                 fprintf(fptr,"ADD R%d,%d\n",vptraddrreg,offset);
 
@@ -659,7 +665,7 @@ int codeGen(struct tnode *t, FILE *fptr)
                 fprintf(fptr,"\tCALL R%d\n",vptraddrreg);
 
                 freeReg();
-            }
+        
             
         }
         ////////////////////////////////
@@ -807,7 +813,7 @@ int codeGen(struct tnode *t, FILE *fptr)
             fprintf(fptr, "MOV [R%d],R%d\n", left,temp);
 
             //for storing the virtual function table in case of class(which is not a field)=class(can never be a field beacause field is iether data member which is not pooossible from outside function or field is a member function and member function does not return a class):
-            if(t->left->nodetype==Variable && t->left->type==NULL && t->left->left==NULL && t->right->nodetype==Variable && t->right->type==NULL && t->right->left==NULL)
+            if(t->left->nodetype==Variable && t->left->type==NULL && t->right->nodetype==Variable && t->right->type==NULL)
             {
                 fprintf(fptr,"ADD R%d,1\n",left);           //to get the vft pointer of left node
                 fprintf(fptr,"ADD R%d,1\n",right);          //to get the vft pointer of desc class

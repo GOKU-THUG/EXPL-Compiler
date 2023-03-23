@@ -129,10 +129,16 @@ void DInstall(struct Classtable *cptr, char* typename, char *name)
         
         strcpy(newnode->name,name);
         newnode->fieldindex=(cptr->fieldcount);
-        cptr->fieldcount+=1;
 
         struct Typetable* type=TLookup(typename); 
         struct Classtable* class=CLookup(typename);
+
+        //incase of class data members
+        if(type==NULL)
+            cptr->fieldcount+=2;
+
+        else//incase of nonclass datamembers
+            cptr->fieldcount+=1;
 
         //Data member can be a class or int/str/userdefined type
         newnode->type=type;

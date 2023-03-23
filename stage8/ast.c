@@ -255,7 +255,21 @@ struct tnode *makeOperatorNode(char c, struct tnode *l, struct tnode *r)
                 //NOW l->type and r->type is a class we can confirm after the above 2 if conditions
                 //since l->nodetype ==variable l will have a varname;
                 //r can now be either a class variable or a field;a.b(b is a class belonging to variable a) or c(variable of type class)
+                char* parentname=NULL;
                 char* descname=NULL;
+
+                if(l->left!=NULL)   //Field of a class :SELF.ID CASE
+                {
+                    struct tnode* iterfield=l->left;
+                    
+                    while(iterfield->next!=NULL)
+                        iterfield=iterfield->next;   
+
+                    parentname=iterfield->field->ctype->name;
+                }
+
+                else        //ID=E(WHERE E =ID AND E IS OF TYPE CLASS)
+                    parentname=l->Gentry->ctype->name;
 
                 if(r->left!=NULL)   //Field of a class ID=E(E=ID.FIELD) where field is a class
                 {
@@ -270,7 +284,8 @@ struct tnode *makeOperatorNode(char c, struct tnode *l, struct tnode *r)
                 else        //ID=E(WHERE E =ID AND E IS OF TYPE CLASS)
                     descname=r->Gentry->ctype->name;
 
-                int valid=isvalid(l->Gentry->ctype->name,descname);  
+
+                int valid=isvalid(parentname,descname);  
 
                 if(valid==-1)
                 {
