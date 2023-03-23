@@ -1,6 +1,6 @@
 # ExpL COMPILER
 
-This repository contains my implementation of ExpL(Experimental Language) done as part of the Compiler Laboratory course I took in 2022.
+This repository contains my implementation of ExpL(Experimental Language) done as part of the Compiler Laboratory course I took in 2023.
 
 The compiler was written in C using the C lexer which is present in lex.yy.c and YACC parser which is present in the y.tab.c file.
 
